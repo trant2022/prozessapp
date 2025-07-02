@@ -7,20 +7,17 @@ class Supplier(models.Model):
     def __str__(self):
         return f"{self.name} ({self.number})"
 
-
 class Customer(models.Model):
     name = models.CharField(max_length=200, unique=True)
 
     def __str__(self):
         return self.name
 
-
 class DeviceType(models.Model):
     name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
         return self.name
-
 
 class DeviceModel(models.Model):
     device_type = models.ForeignKey(DeviceType, on_delete=models.CASCADE, related_name="models")
@@ -31,7 +28,6 @@ class DeviceModel(models.Model):
 
     def __str__(self):
         return f"{self.device_type} - {self.name}"
-
 
 class Order(models.Model):
     ORDER_TYPES = [
@@ -47,8 +43,10 @@ class Order(models.Model):
     currency = models.CharField(max_length=10)
     logistics_cost_fw = models.DecimalField(max_digits=12, decimal_places=2)
     currency_rate = models.DecimalField(max_digits=12, decimal_places=6)
-    net_price_chf = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
-    total_quantity = models.PositiveIntegerField(editable=False)
+    # Calculated fields:
+    net_price_chf = models.DecimalField(max_digits=12, decimal_places=2, editable=False, null=True, blank=True)
+    total_quantity = models.PositiveIntegerField(editable=False, null=True, blank=True)
+    # Input quantities per category
     reserved_quantity = models.PositiveIntegerField()
     quantity_retail = models.PositiveIntegerField()
     quantity_broker = models.PositiveIntegerField()
@@ -80,16 +78,24 @@ class Order(models.Model):
     braendi_collected_at = models.DateField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
-        # Berechne total_quantity und net_price_chf automatisch
-        total_qty = sum(pos.quantity for pos in self.positions.all()) if self.pk else 0
+        # calculate total_quantity from input fields
+        total_qty = (
+            (self.reserved_quantity or 0)
+            + (self.quantity_retail or 0)
+            + (self.quantity_broker or 0)
+            + (self.quantity_marketplace or 0)
+        )
         self.total_quantity = total_qty
+        # calculate net_price_chf: (logistics_cost_fw / total_qty + net_price_fw) * currency_rate
         if total_qty:
-            self.net_price_chf = (self.net_price_fw + (self.logistics_cost_fw / total_qty)) * self.currency_rate
+            unit_logistics = self.logistics_cost_fw / total_qty
+            self.net_price_chf = (unit_logistics + self.net_price_fw) * self.currency_rate
+        else:
+            self.net_price_chf = None
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.order_number
-
 
 class OrderPosition(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='positions')

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders</title>
+  <!-- Tailwind über CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <nav class="bg-white shadow p-4">
+    <h1 class="text-2xl font-semibold">ProzessApp Dashboard</h1>
+  </nav>
+
+  <main class="p-4">
+    <h2 class="text-xl mb-4">Offene Bestellungen</h2>
+    <div class="overflow-x-auto">
+      <table class="min-w-full bg-white shadow rounded-lg overflow-hidden">
+<table class="min-w-full bg-white shadow rounded-lg overflow-hidden">
+  <thead class="bg-gray-200">
+    <tr>
+      <th class="py-2 px-4 text-left">Auftrags-Nr.</th>
+      <th class="py-2 px-4 text-left">Auftragsart</th>
+      <th class="py-2 px-4 text-left">Lieferant</th>
+      <th class="py-2 px-4 text-left">Kunde</th>
+      <th class="py-2 px-4 text-left">Menge Total</th>
+      <th class="py-2 px-4 text-left">Bestelldatum</th>
+      <th class="py-2 px-4 text-left">Erwartete Lieferung Lager</th>
+    </tr>
+  </thead>
+  <tbody>
+  <tbody>
+    {% for order in orders %}
+    <tr class="border-b hover:bg-gray-50">
+        <td class="py-2 px-4">
+        <a href="{% url 'order_detail' order.pk %}" class="text-blue-600 hover:underline">
+            {{ order.order_number }}
+        </a>
+        </td>
+      <td class="py-2 px-4">{{ order.get_order_type_display }}</td>
+      <td class="py-2 px-4">{{ order.supplier.name }}</td>
+      <td class="py-2 px-4">{{ order.customer.name }}</td>
+      <td class="py-2 px-4">{{ order.total_quantity }}</td>
+      <td class="py-2 px-4">{{ order.order_date }}</td>
+      <td class="py-2 px-4">{{ order.delivery_date }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="7" class="py-4 px-4 text-center">Keine Bestellungen gefunden.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+      </table>
+    </div>
+  </main>
+</body>
+</html>
