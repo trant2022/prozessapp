@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Lieferung {{ lieferung.liefernummer }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <header class="flex items-center justify-between bg-white shadow p-4">
+    <a href="{% url 'order_list' %}" class="text-blue-600 hover:underline">&larr; Zurück</a>
+    <h1 class="text-xl font-semibold">Lieferung {{ lieferung.liefernummer }}</h1>
+  </header>
+  <main class="p-4">
+    <section class="bg-white shadow rounded-lg p-4 mb-6">
+      <dl class="grid grid-cols-2 gap-4">
+        <div><dt class="font-medium">Lieferant</dt><dd>{{ lieferung.lieferant.name }}</dd></div>
+        <div><dt class="font-medium">Bestelldatum</dt><dd>{{ lieferung.bestelldatum|date:"d.m.Y" }}</dd></div>
+        <div><dt class="font-medium">Erwartetes Datum</dt>
+          <dd>{% if lieferung.erwartetes_datum %}{{ lieferung.erwartetes_datum|date:"d.m.Y" }}{% else %}&ndash;{% endif %}</dd>
+        </div>
+        <div><dt class="font-medium">Effektives Datum</dt>
+          <dd>{% if lieferung.effektives_datum %}{{ lieferung.effektives_datum|date:"d.m.Y" }}{% else %}&ndash;{% endif %}</dd>
+        </div>
+        <div><dt class="font-medium">Menge Total</dt><dd>{{ lieferung.gesamtmenge }}</dd></div>
+      </dl>
+    </section>
+    <section class="bg-white shadow rounded-lg p-4">
+      <h2 class="text-lg font-medium mb-2">Positionen</h2>
+      <table class="w-full text-left">
+        <thead class="bg-gray-200">
+          <tr>
+            <th class="py-2 px-4">Pos.-Nr.</th>
+            <th class="py-2 px-4">Typ</th>
+            <th class="py-2 px-4">Modell</th>
+            <th class="py-2 px-4">Farbe</th>
+            <th class="py-2 px-4">Speicher</th>
+            <th class="py-2 px-4">RAM</th>
+            <th class="py-2 px-4">Menge</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in positionen %}
+          <tr class="border-b">
+            <td class="py-2 px-4">{{ p.positionsnummer }}</td>
+            <td class="py-2 px-4">{{ p.geraetetyp.name }}</td>
+            <td class="py-2 px-4">{{ p.geraetemodell.name }}</td>
+            <td class="py-2 px-4">{{ p.farbe }}</td>
+            <td class="py-2 px-4">{{ p.speicher }}</td>
+            <td class="py-2 px-4">{{ p.ram }}</td>
+            <td class="py-2 px-4">{{ p.menge }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="p-4">Keine Positionen.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
