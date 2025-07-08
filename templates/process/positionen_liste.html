@@ -1,0 +1,55 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Positionen Lieferung {{ lieferung.liefernummer }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <header class="flex items-center justify-between bg-white shadow p-4">
+    <a href="{% url 'order_list' %}" class="text-blue-600 hover:underline">&larr; Zurück</a>
+    <h1 class="text-2xl font-semibold">Positionen Lieferung {{ lieferung.liefernummer }}</h1>
+  </header>
+
+  <main class="p-4">
+    <section class="bg-white shadow rounded-lg p-4">
+      <table class="w-full text-center">
+        <thead class="bg-gray-200">
+          <tr>
+            <th class="py-2 px-4">Pos.-Nr.</th>
+            <th class="py-2 px-4">Gerätetyp</th>
+            <th class="py-2 px-4">Modell</th>
+            <th class="py-2 px-4">Farbe</th>
+            <th class="py-2 px-4">Speicher</th>
+            <th class="py-2 px-4">RAM</th>
+            <th class="py-2 px-4">Prozessor</th>
+            <th class="py-2 px-4">Zustand</th>
+            <th class="py-2 px-4">Menge</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pos in positionen %}
+          <tr class="{% cycle 'bg-white' 'bg-gray-50' %} border-b">
+            <td class="py-2 px-4">{{ pos.positionsnummer }}</td>
+            <td class="py-2 px-4">{{ pos.geraetetyp.name }}</td>
+            <td class="py-2 px-4">{{ pos.geraetemodell.name }}</td>
+            <td class="py-2 px-4">{{ pos.farbe }}</td>
+            <td class="py-2 px-4">{{ pos.speicher }}</td>
+            <td class="py-2 px-4">{{ pos.ram }}</td>
+            <td class="py-2 px-4">{{ pos.prozessor }}</td>
+            <td class="py-2 px-4">{{ pos.zustand }}</td>
+            <td class="py-2 px-4">{{ pos.menge }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="p-4">Keine Positionen vorhanden.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
