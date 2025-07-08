@@ -1,199 +1,208 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="de" x-data="lieferungWizard()">
+<html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="//unpkg.com/alpinejs" defer></script>
-  <style>[x-cloak]{display:none!important;}</style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <!-- Modal für neue Lieferung -->
-  <div
-    x-show="open"
-    x-cloak
-    @keydown.escape.window="open = false; step = 1"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
-  >
-    <div
-      @click.away="open = false; step = 1"
-      class="bg-white rounded-lg overflow-hidden w-full max-w-md"
-    >
-      <div class="px-6 py-4 border-b">
-        <h2 class="text-xl font-semibold">Neue Lieferung anlegen</h2>
-      </div>
-      <div class="p-6">
-        <template x-if="step === 1">
-          <div>
-            <label class="block mb-2 font-medium">Lieferant</label>
-            <select x-model="form.lieferant" class="w-full border rounded px-3 py-2">
-              <option value="" disabled>— auswählen —</option>
-              {% for l in suppliers %}
-              <option value="{{ l.id }}">{{ l.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </template>
-        <template x-if="step === 2">
-          <div>
-            <label class="block mb-2 font-medium">Bestelldatum</label>
-            <input type="date" x-model="form.bestelldatum" class="w-full border rounded px-3 py-2" readonly>
-          </div>
-        </template>
-        <template x-if="step === 3">
-          <div>
-            <label class="block mb-2 font-medium">Erwartetes Ankunftsdatum</label>
-            <input type="date" x-model="form.erwartetes_datum" class="w-full border rounded px-3 py-2">
-          </div>
-        </template>
-        <template x-if="step === 4">
-          <div>
-            <label class="block mb-2 font-medium">Menge Total</label>
-            <input type="number" x-model="form.gesamtmenge" class="w-full border rounded px-3 py-2" min="1">
-          </div>
-        </template>
-      </div>
-      <div class="px-6 py-4 border-t flex justify-between">
-        <button
-          x-show="step > 1"
-          @click="step--"
-          class="px-4 py-2 bg-gray-200 rounded"
-        >Zurück</button>
-        <div class="flex space-x-2">
-          <button
-            x-show="step < 4"
-            @click="step++"
-            class="px-4 py-2 bg-blue-600 text-white rounded"
-            :disabled="
-              (step===1 && !form.lieferant)
-              || (step===3 && !form.erwartetes_datum)
-              || (step===4 && !form.gesamtmenge)
-            "
-          >Weiter</button>
-          <button
-            x-show="step === 4"
-            @click="submit()"
-            class="px-4 py-2 bg-green-600 text-white rounded"
-          >Anlegen</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Navbar / Header -->
+  <!-- Header mit Logo rechts -->
   <header class="flex items-center justify-between bg-white shadow p-4">
     <h1 class="text-2xl font-semibold">Dashboard</h1>
-    <div class="flex items-center space-x-4">
-      <button
-        @click="open = true"
-        class="bg-blue-600 text-white px-4 py-2 rounded"
-      >Neue Lieferung</button>
-      <img src="{% static 'images/Logo.png' %}" alt="Logo" class="h-12">
-    </div>
+    <img src="{% static 'images/Logo.png' %}" alt="Logo" class="h-10">
   </header>
 
-  <!-- KPI-Boxen -->
-  <main class="p-4 space-y-6">
+  <main class="p-6 space-y-6">
+
+<!-- Trigger-Button -->
+<button
+  id="openModal"
+  class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded shadow"
+>
+  Neue Lieferung
+</button>
+
+<!-- Modal-Backdrop -->
+<div
+  id="modalBackdrop"
+  class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center"
+>
+  <!-- Modal-Container -->
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-semibold">Neue Lieferung anlegen</h2>
+      <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+        ✕
+      </button>
+    </div>
+
+    <!-- Form -->
+    <form action="{% url 'create_lieferung' %}" method="post" class="space-y-4">
+      {% csrf_token %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Lieferant (Dropdown + Neu anlegen) -->
+        <div class="col-span-2">
+          <label for="lieferant" class="block text-sm font-medium text-gray-700 mb-1">
+            Lieferant
+          </label>
+          <div class="flex space-x-2">
+            <select
+              name="lieferant"
+              id="lieferant"
+              class="flex-1 block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              required
+            >
+              <option value="">-- auswählen --</option>
+              {% for sup in lieferanten %}
+                <option value="{{ sup.pk }}">{{ sup.name }}</option>
+              {% endfor %}
+            </select>
+            <button
+              type="button"
+              id="addSupplierBtn"
+              class="bg-green-500 hover:bg-green-600 text-white px-3 rounded-lg"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <!-- Bestelldatum -->
+        <div>
+          <label for="bestelldatum" class="block text-sm font-medium text-gray-700 mb-1">
+            Bestelldatum
+          </label>
+          <input
+            type="date"
+            name="bestelldatum"
+            id="bestelldatum"
+            value="{{ today }}"
+            class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+        </div>
+
+        <!-- Erwartetes Datum -->
+        <div>
+          <label for="erwartetes_datum" class="block text-sm font-medium text-gray-700 mb-1">
+            Erwartetes Ankunftsdatum
+          </label>
+          <input
+            type="date"
+            name="erwartetes_datum"
+            id="erwartetes_datum"
+            class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+        </div>
+
+        <!-- Menge Total -->
+        <div class="col-span-2">
+          <label for="gesamtmenge" class="block text-sm font-medium text-gray-700 mb-1">
+            Menge Total
+          </label>
+          <input
+            type="number"
+            name="gesamtmenge"
+            id="gesamtmenge"
+            min="1"
+            class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+            placeholder="z.B. 50"
+            required
+          />
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <div class="flex justify-end">
+        <button
+          type="submit"
+          class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow"
+        >
+          Anlegen
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+    <!-- KPI-Boxen -->
     <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="bg-white shadow rounded-lg p-6 text-center">
+      <div class="bg-white shadow rounded-lg p-4 text-center">
         <h2 class="text-lg font-medium">Bestellte Geräte</h2>
         <p class="text-3xl font-bold">{{ kpi.total_ordered }}</p>
       </div>
-      <div class="bg-white shadow rounded-lg p-6 text-center">
+      <div class="bg-white shadow rounded-lg p-4 text-center">
         <h2 class="text-lg font-medium">Verarbeitete Geräte intern</h2>
         <p class="text-3xl font-bold">{{ kpi.processed_internal }}</p>
       </div>
-      <div class="bg-white shadow rounded-lg p-6 text-center">
+      <div class="bg-white shadow rounded-lg p-4 text-center">
         <h2 class="text-lg font-medium">Verarbeitete Geräte extern</h2>
         <p class="text-3xl font-bold">{{ kpi.processed_external }}</p>
       </div>
     </section>
 
-    <!-- Offene Lieferungen -->
-    <section class="bg-white shadow rounded-lg p-6">
-      <h2 class="text-xl font-semibold mb-4">Offene Lieferungen</h2>
-      <table class="min-w-full table-auto">
-        <thead class="bg-gray-200">
+    <!-- Offene Lieferaufträge -->
+    <section class="bg-white shadow rounded-lg p-4">
+      <h2 class="text-xl font-semibold mb-4">Offene Lieferaufträge</h2>
+      <table class="min-w-full bg-white">
+        <thead class="bg-gray-100">
           <tr>
-            <th class="px-4 py-2 text-left">#</th>
-            <th class="px-4 py-2 text-left">Lieferant</th>
-            <th class="px-4 py-2 text-left">Bestellt</th>
-            <th class="px-4 py-2 text-left">Erwartet</th>
-            <th class="px-4 py-2 text-left">Effektiv</th>
-            <th class="px-4 py-2 text-left">Menge Total</th>
-            <th class="px-4 py-2 text-left">Aktion</th>
+            <th class="py-2 px-4 text-left">#</th>
+            <th class="py-2 px-4 text-left">Lieferant</th>
+            <th class="py-2 px-4 text-left">Bestelldatum</th>
+            <th class="py-2 px-4 text-left">Erwartet in (Wochen)</th>
+            <th class="py-2 px-4 text-left">Menge Total</th>
+            <th class="py-2 px-4 text-left">Aktion</th>
           </tr>
         </thead>
         <tbody>
-          {% for l in orders %}
+          {% for lieferung in lieferungen %}
           <tr class="border-b hover:bg-gray-50">
-            <td class="px-4 py-2">{{ l.liefernummer }}</td>
-            <td class="px-4 py-2">{{ l.lieferant.name }}</td>
-            <td class="px-4 py-2">{{ l.bestelldatum|date:"d.m.Y" }}</td>
-            <td class="px-4 py-2">{{ l.erwartetes_datum|date:"d.m.Y" }}</td>
-            <td class="px-4 py-2">
-              {% if l.effektives_datum %}
-                {{ l.effektives_datum|date:"d.m.Y" }}
+            <td class="py-2 px-4">{{ forloop.counter }}</td>
+            <td class="py-2 px-4">{{ lieferung.lieferant.name }}</td>
+            <td class="py-2 px-4">{{ lieferung.bestelldatum|date:"d.m.Y" }}</td>
+            <td class="py-2 px-4">{{ lieferung.weeks_to_arrival }}</td>
+            <td class="py-2 px-4">{{ lieferung.gesamtmenge }}</td>
+            <td class="py-2 px-4">
+              {% if not lieferung.effektives_datum %}
+                <form action="{% url 'lieferung_angekommen' lieferung.liefernummer %}" method="post">
+                  {% csrf_token %}
+                  <button type="submit"
+                          class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">
+                    Lieferung angekommen
+                  </button>
+                </form>
               {% else %}
-                —
-              {% endif %}
-            </td>
-            <td class="px-4 py-2">{{ l.gesamtmenge }}</td>
-            <td class="px-4 py-2">
-              {% if not l.effektives_datum %}
-              <form method="post" action="{% url 'lieferung_angekommen' l.liefernummer %}">
-                {% csrf_token %}
-                <button
-                  type="submit"
-                  class="bg-green-500 text-white px-3 py-1 rounded"
-                >Lieferung angekommen</button>
-              </form>
-              {% else %}
-                <span class="text-gray-500">—</span>
+                {{ lieferung.effektives_datum|date:"d.m.Y" }}
               {% endif %}
             </td>
           </tr>
           {% empty %}
           <tr>
-            <td colspan="7" class="p-4 text-center">Keine offenen Lieferungen.</td>
+            <td colspan="6" class="py-4 px-4 text-center text-gray-500">
+              Keine offenen Lieferaufträge.
+            </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </section>
+
   </main>
 
   <script>
-    function lieferungWizard() {
-      return {
-        open: false,
-        step: 1,
-        form: {
-          lieferant: '',
-          bestelldatum: new Date().toISOString().substr(0,10),
-          erwartetes_datum: '',
-          gesamtmenge: ''
-        },
-        submit() {
-          fetch("{% url 'lieferung_neu' %}", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: JSON.stringify(this.form),
-          })
-          .then(r => r.json())
-          .then(j => {
-            if (j.success) location.reload();
-            else alert("Fehler: " + j.error);
-          });
-        }
-      }
-    }
+    // Modal öffnen/schließen
+    document.getElementById('openModal').addEventListener('click', () => {
+      document.getElementById('modal').classList.remove('hidden');
+    });
+    document.getElementById('closeModal').addEventListener('click', () => {
+      document.getElementById('modal').classList.add('hidden');
+    });
   </script>
 
 </body>

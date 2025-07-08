@@ -8,9 +8,19 @@ from django.views.decorators.http import require_POST
 import datetime
 import json
 
+def generate_number():
+    # Liefert die bisher höchste numerische Lieferantennummer +1, oder "1" wenn noch keiner existiert.
+    last = Lieferant.objects.order_by('-nummer').first()
+    if last and last.nummer.isdigit():
+        return str(int(last.nummer) + 1)
+    return '1'
+
 
 def order_list(request):
     today = datetime.date.today()
+    lieferungen = Lieferung.objects.order_by('liefernummer')
+    lieferanten = Lieferant.objects.order_by('name')
+    heute       = timezone.localdate()
     orders = (
         Auftrag.objects
         .filter(datensatz_importiert=False)
@@ -31,8 +41,10 @@ def order_list(request):
     )
 
     return render(request, 'process/order_list.html', {
+        'lieferungen': lieferungen,
+        'lieferanten': lieferanten,
         'orders': orders,
-        'today': today,
+        'today': heute,
         'kpi': {
             'total_ordered': total_ordered,
             'processed_internal': processed_internal,
@@ -70,32 +82,28 @@ def dashboard(request):
 
 @require_POST
 
+def create_lieferung(request):
+    if request.method == 'POST':
+        # wenn neuer Lieferant angegeben, zuerst anlegen:
+        neuer_name = request.POST.get('neuer_lieferant')
+        if neuer_name:
+            supplier = Lieferant.objects.create(
+                nummer=generate_number(),
+                name=neuer_name
+            )
+        else:
+            supplier = Lieferant.objects.get(pk=request.POST['lieferant'])
+        Lieferung.objects.create(
+            lieferant=supplier,
+            bestelldatum=datetime.date.today(),
+            erwartetes_datum=request.POST['erwartetes_datum'],
+            gesamtmenge=request.POST['gesamtmenge'],
+        )
+    return redirect('order_list')
+
 def lieferung_angekommen(request, pk):
-    if request.method == "POST":
-        l = get_object_or_404(Lieferung, liefernummer=pk)
-        l.effektives_datum = timezone.localdate()
-        l.save()
-    return redirect('dashboard')
-
-def lieferung_neu(request):
-    data = json.loads(request.body)
-    lieferant_val = data.get('lieferant')
-    # wenn Auswahl "__new__", lege neuen Lieferant an
-    if lieferant_val == '__new__':
-        name = data.get('new_supplier_name','').strip()
-        if not name:
-            return JsonResponse({'success': False, 'error': 'Kein Name für neuen Lieferanten.'})
-        # Nummer automatisch hochzählen lassen  
-        letzte_nummer = Lieferant.objects.order_by('-id').first()
-        nummer = f"{(letzte_nummer.id+1) if letzte_nummer else 1:03d}"
-        supplier = Lieferant.objects.create(name=name, nummer=nummer)
-    else:
-        supplier = get_object_or_404(Lieferant, pk=int(lieferant_val))
-
-    l = Lieferung.objects.create(
-      lieferant=supplier,
-      bestelldatum=data['bestelldatum'],
-      erwartetes_datum=data['erwartetes_datum'],
-      gesamtmenge=data['gesamtmenge'],
-    )
-    return JsonResponse({'success': True, 'liefernummer': l.liefernummer})
+    if request.method == 'POST':
+        lieferung = Lieferung.objects.get(pk=pk)
+        lieferung.effektives_datum = datetime.date.today()
+        lieferung.save()
+    return redirect('order_list')
