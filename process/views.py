@@ -1,51 +1,59 @@
-from rest_framework import viewsets
-from django.shortcuts import render
-from django.shortcuts import render, get_object_or_404
-
-from .models import Supplier, Customer, DeviceType, DeviceModel, Order, OrderPosition
-from .serializers import (
-    SupplierSerializer, CustomerSerializer,
-    DeviceTypeSerializer, DeviceModelSerializer,
-    OrderSerializer, OrderPositionSerializer
-)
-
-class SupplierViewSet(viewsets.ModelViewSet):
-    queryset = Supplier.objects.all()
-    serializer_class = SupplierSerializer
-
-class CustomerViewSet(viewsets.ModelViewSet):
-    queryset = Customer.objects.all()
-    serializer_class = CustomerSerializer
-
-class DeviceTypeViewSet(viewsets.ModelViewSet):
-    queryset = DeviceType.objects.all()
-    serializer_class = DeviceTypeSerializer
-
-class DeviceModelViewSet(viewsets.ModelViewSet):
-    queryset = DeviceModel.objects.all()
-    serializer_class = DeviceModelSerializer
-
-class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.all()
-    serializer_class = OrderSerializer
-
-class OrderPositionViewSet(viewsets.ModelViewSet):
-    queryset = OrderPosition.objects.all()
-    serializer_class = OrderPositionSerializer
+from django.shortcuts import render, get_object_or_404, redirect
+from django.db.models import Sum
+from .models import Auftrag, Auftragsposition, Lieferung
+import datetime
 
 def order_list(request):
+    today = datetime.date.today()
     orders = (
-        Order.objects
-        .select_related('supplier', 'customer')
-        .order_by('-order_date')
+        Auftrag.objects
+        .filter(datensatz_importiert=False)
+        .select_related('lieferant')
+        .order_by('auftragsnummer')
     )
-    return render(request, 'process/order_list.html', {'orders': orders})
+
+    total_ordered = orders.aggregate(sum=Sum('gesamtmenge'))['sum'] or 0
+    processed_internal = (
+        Auftrag.objects
+        .filter(datensatz_importiert=True)
+        .aggregate(sum=Sum('gesamtmenge'))['sum'] or 0
+    )
+    processed_external = (
+        Auftrag.objects
+        .filter(braendi_abgeholt__isnull=False)
+        .aggregate(sum=Sum('gesamtmenge'))['sum'] or 0
+    )
+
+    return render(request, 'process/order_list.html', {
+        'orders': orders,
+        'today': today,
+        'kpi': {
+            'total_ordered': total_ordered,
+            'processed_internal': processed_internal,
+            'processed_external': processed_external,
+        }
+    })
 
 def order_detail(request, pk):
-    order = get_object_or_404(Order, pk=pk)
-    # Lädt alle Positionen und ggf. verwandte Objekte
-    positions = order.positions.select_related('device_type', 'device_model').all()
+    order = get_object_or_404(Auftrag, pk=pk)
+    positions = (
+        order.positionen
+        .select_related('geraetetyp', 'geraetemodell')
+        .all()
+    )
     return render(request, 'process/order_detail.html', {
         'order': order,
         'positions': positions,
     })
+
+def dashboard(request):
+    # alle Lieferungen, sortiert nach Liefernummer
+    lieferungen = Lieferung.objects.order_by('liefernummer')
+    return render(request, 'process/dashboard.html', {
+        'lieferungen': lieferungen
+    })
+
+def lieferung_angekommen(request, pk):
+    lieferung = get_object_or_404(Lieferung, pk=pk)
+    lieferung.mark_arrived()
+    return redirect('dashboard')

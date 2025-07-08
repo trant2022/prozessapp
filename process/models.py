@@ -1,123 +1,316 @@
 from django.db import models
+from django.utils import timezone
 
-class Supplier(models.Model):
-    number = models.CharField(max_length=50, unique=True)
-    name = models.CharField(max_length=200)
-
-    def __str__(self):
-        return f"{self.name} ({self.number})"
-
-class Customer(models.Model):
-    name = models.CharField(max_length=200, unique=True)
-
-    def __str__(self):
-        return self.name
-
-class DeviceType(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-
-    def __str__(self):
-        return self.name
-
-class DeviceModel(models.Model):
-    device_type = models.ForeignKey(DeviceType, on_delete=models.CASCADE, related_name="models")
-    name = models.CharField(max_length=100)
+class Lieferant(models.Model):
+    nummer = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="Lieferantennummer"
+    )
+    name = models.CharField(
+        max_length=200,
+        verbose_name="Lieferant"
+    )
 
     class Meta:
-        unique_together = ("device_type", "name")
+        verbose_name = "Lieferant"
+        verbose_name_plural = "Lieferanten"
 
     def __str__(self):
-        return f"{self.device_type} - {self.name}"
+        return f"{self.name} ({self.nummer})"
 
-class Order(models.Model):
-    ORDER_TYPES = [
+
+class Kunde(models.Model):
+    name = models.CharField(
+        max_length=200,
+        unique=True,
+        verbose_name="Kunde"
+    )
+
+    class Meta:
+        verbose_name = "Kunde"
+        verbose_name_plural = "Kunden"
+
+    def __str__(self):
+        return self.name
+
+
+class Gerätetyp(models.Model):
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name="Gerätetyp"
+    )
+
+    class Meta:
+        verbose_name = "Gerätetyp"
+        verbose_name_plural = "Gerätetypen"
+
+    def __str__(self):
+        return self.name
+
+
+class Gerätemodell(models.Model):
+    typ = models.ForeignKey(
+        Gerätetyp,
+        on_delete=models.CASCADE,
+        related_name="modelle",
+        verbose_name="Gerätetyp"
+    )
+    name = models.CharField(
+        max_length=100,
+        verbose_name="Modellbezeichnung"
+    )
+
+    class Meta:
+        unique_together = ("typ", "name")
+        verbose_name = "Gerätemodell"
+        verbose_name_plural = "Gerätemodelle"
+
+    def __str__(self):
+        return f"{self.typ} - {self.name}"
+
+
+from django.db import models
+from django.utils import timezone  # <- hinzufügen
+
+class Lieferung(models.Model):
+    liefernummer = models.AutoField(
+        primary_key=True,
+        verbose_name="Liefernummer"
+    )
+    lieferant = models.ForeignKey(
+        Lieferant,
+        on_delete=models.PROTECT,
+        verbose_name="Lieferant"
+    )
+    bestelldatum = models.DateField(
+        verbose_name="Bestelldatum"
+    )
+    erwartetes_datum = models.DateField(
+        verbose_name="Erwartetes Ankunftsdatum"
+    )
+    gesamtmenge = models.PositiveIntegerField(
+        verbose_name="Menge Total"
+    )
+    effektives_datum = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Effektives Ankunftsdatum"
+    )
+
+    class Meta:
+        verbose_name = "Lieferauftrag"
+        verbose_name_plural = "Lieferaufträge"
+        ordering = ['liefernummer']
+
+    def mark_arrived(self):
+        """Setzt das effektive Datum auf heute."""
+        self.effektives_datum = timezone.localdate()
+        self.save()
+
+    def __str__(self):
+        return f"{self.liefernummer} – {self.lieferant.name}"
+
+
+class Auftrag(models.Model):
+    AUFTRAGSARTEN = [
         ('BROKER', 'Broker'),
         ('RETAIL', 'Retail'),
-        ('MARKETPLACE', 'Marketplace'),
+        ('MARKETPLACE', 'Marktplatz'),
     ]
-    order_number = models.CharField(max_length=100, unique=True)
-    order_type = models.CharField(max_length=20, choices=ORDER_TYPES)
-    supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT)
-    customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
-    net_price_fw = models.DecimalField(max_digits=12, decimal_places=2)
-    currency = models.CharField(max_length=10)
-    logistics_cost_fw = models.DecimalField(max_digits=12, decimal_places=2)
-    currency_rate = models.DecimalField(max_digits=12, decimal_places=6)
-    # Calculated fields:
-    net_price_chf = models.DecimalField(max_digits=12, decimal_places=2, editable=False, null=True, blank=True)
-    total_quantity = models.PositiveIntegerField(editable=False, null=True, blank=True)
-    # Input quantities per category
-    reserved_quantity = models.PositiveIntegerField()
-    quantity_retail = models.PositiveIntegerField()
-    quantity_broker = models.PositiveIntegerField()
-    quantity_marketplace = models.PositiveIntegerField()
-    order_date = models.DateField()
-    delivery_date = models.DateField(null=True, blank=True)
-    securaze_possible = models.BooleanField()
-    dataset_received = models.BooleanField(default=False)
-    dataset_imported = models.BooleanField(default=False)
-    test_required = models.BooleanField()
-    cleaning_choice = models.CharField(max_length=20, choices=[
-        ('NO', 'Nein'),
-        ('MINIMAL', 'Ja, minimal'),
-        ('FULL', 'Ja, voll'),
-    ])
-    wipe_method = models.CharField(max_length=20, choices=[
-        ('NO', 'Nein'),
-        ('SMART_ERASURE', 'Smart Erasure'),
-        ('DATA_CLEAR', 'Data Clear'),
-    ])
-    packaging = models.CharField(max_length=50, choices=[
-        ('LARGE_BOX', 'Grosskarton'),
-        ('FOLDING_BOX', 'Faltkarton'),
-    ])
-    sell_price_net = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    braendi_required = models.BooleanField()
-    braendi_notified_at = models.DateField(null=True, blank=True)
-    braendi_delivered_at = models.DateField(null=True, blank=True)
-    braendi_collected_at = models.DateField(null=True, blank=True)
-
-    def save(self, *args, **kwargs):
-        # calculate total_quantity from input fields
-        total_qty = (
-            (self.reserved_quantity or 0)
-            + (self.quantity_retail or 0)
-            + (self.quantity_broker or 0)
-            + (self.quantity_marketplace or 0)
-        )
-        self.total_quantity = total_qty
-        # calculate net_price_chf: (logistics_cost_fw / total_qty + net_price_fw) * currency_rate
-        if total_qty:
-            unit_logistics = self.logistics_cost_fw / total_qty
-            self.net_price_chf = (unit_logistics + self.net_price_fw) * self.currency_rate
-        else:
-            self.net_price_chf = None
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return self.order_number
-
-class OrderPosition(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='positions')
-    position_number = models.PositiveIntegerField()
-    device_type = models.ForeignKey(DeviceType, on_delete=models.PROTECT)
-    device_model = models.ForeignKey(DeviceModel, on_delete=models.PROTECT)
-    color = models.CharField(max_length=50)
-    storage = models.CharField(max_length=50)
-    ram = models.CharField(max_length=50)
-    processor = models.CharField(max_length=100)
-    condition = models.CharField(max_length=100)
-    quantity = models.PositiveIntegerField()
+    auftragsnummer = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name="Auftragsnummer"
+    )
+    auftragsart = models.CharField(
+        max_length=20,
+        choices=AUFTRAGSARTEN,
+        verbose_name="Auftragsart"
+    )
+    lieferant = models.ForeignKey(
+        Lieferant,
+        on_delete=models.PROTECT,
+        verbose_name="Lieferant"
+    )
+    kunde = models.ForeignKey(
+        Kunde,
+        on_delete=models.PROTECT,
+        verbose_name="Kunde"
+    )
+    nettopreis_fw = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Nettopreis Fremdwährung"
+    )
+    waehrung = models.CharField(
+        max_length=10,
+        verbose_name="Währung"
+    )
+    logistikkosten_fw = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Logistikkosten Fremdwährung"
+    )
+    wechselkurs = models.DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        verbose_name="Wechselkurs"
+    )
+    nettopreis_chf = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        editable=False,
+        null=True,
+        blank=True,
+        verbose_name="Nettopreis CHF"
+    )
+    gesamtmenge = models.PositiveIntegerField(
+        editable=False,
+        null=True,
+        blank=True,
+        verbose_name="Gesamtmenge"
+    )
+    reservierte_menge = models.PositiveIntegerField(
+        verbose_name="Reservierte Menge"
+    )
+    menge_retail = models.PositiveIntegerField(
+        verbose_name="Menge Retail"
+    )
+    menge_broker = models.PositiveIntegerField(
+        verbose_name="Menge Broker"
+    )
+    menge_marktplatz = models.PositiveIntegerField(
+        verbose_name="Menge Marktplatz"
+    )
+    bestelldatum = models.DateField(verbose_name="Bestelldatum")
+    lieferdatum = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Erwartetes Lieferdatum"
+    )
+    sicherung_moeglich = models.BooleanField(verbose_name="Securaze möglich")
+    datensatz_erhalten = models.BooleanField(
+        default=False,
+        verbose_name="Datensatz erhalten"
+    )
+    datensatz_importiert = models.BooleanField(
+        default=False,
+        verbose_name="Datensatz importiert"
+    )
+    test_noetig = models.BooleanField(verbose_name="Test erforderlich")
+    reinigung = models.CharField(
+        max_length=20,
+        choices=[
+            ('NO', 'Nein'),
+            ('MINIMAL', 'Ja, minimal'),
+            ('FULL', 'Ja, voll'),
+        ],
+        verbose_name="Reinigung"
+    )
+    loeschmethode = models.CharField(
+        max_length=20,
+        choices=[
+            ('NO', 'Nein'),
+            ('SMART_ERASURE', 'Smart Erasure'),
+            ('DATA_CLEAR', 'Data Clear'),
+        ],
+        verbose_name="Löschmethode"
+    )
+    verpackung = models.CharField(
+        max_length=50,
+        choices=[
+            ('LARGE_BOX', 'Grosskarton'),
+            ('FOLDING_BOX', 'Faltkarton'),
+        ],
+        verbose_name="Verpackung"
+    )
+    verkaufspreis_netto = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Verkaufspreis netto"
+    )
+    braendi_noetig = models.BooleanField(verbose_name="Brändi nötig")
+    braendi_benachrichtigt = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Brändi benachrichtigt"
+    )
+    braendi_geliefert = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Brändi geliefert"
+    )
+    braendi_abgeholt = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Brändi abgeholt"
+    )
 
     class Meta:
-        unique_together = ('order', 'position_number')
-        ordering = ['position_number']
+        verbose_name = "Auftrag"
+        verbose_name_plural = "Aufträge"
 
     def save(self, *args, **kwargs):
-        if not self.position_number:
-            last = OrderPosition.objects.filter(order=self.order).order_by('-position_number').first()
-            self.position_number = last.position_number + 1 if last else 1
+        total_qty = (
+            (self.reservierte_menge or 0)
+            + (self.menge_retail or 0)
+            + (self.menge_broker or 0)
+            + (self.menge_marktplatz or 0)
+        )
+        self.gesamtmenge = total_qty
+        if total_qty:
+            unit_log = self.logistikkosten_fw / total_qty
+            self.nettopreis_chf = (unit_log + self.nettopreis_fw) * self.wechselkurs
+        else:
+            self.nettopreis_chf = None
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.order.order_number} - Pos {self.position_number}"
+        return self.auftragsnummer
+
+
+class Auftragsposition(models.Model):
+    auftrag = models.ForeignKey(
+        Auftrag,
+        on_delete=models.CASCADE,
+        related_name='positionen',
+        verbose_name="Auftrag"
+    )
+    positionsnummer = models.PositiveIntegerField(verbose_name="Positionsnummer")
+    geraetetyp = models.ForeignKey(
+        Gerätetyp,
+        on_delete=models.PROTECT,
+        verbose_name="Gerätetyp"
+    )
+    geraetemodell = models.ForeignKey(
+        Gerätemodell,
+        on_delete=models.PROTECT,
+        verbose_name="Gerätemodell"
+    )
+    farbe = models.CharField(max_length=50, verbose_name="Farbe")
+    speicher = models.CharField(max_length=50, verbose_name="Speicher")
+    ram = models.CharField(max_length=50, verbose_name="RAM")
+    prozessor = models.CharField(max_length=100, verbose_name="Prozessor")
+    zustand = models.CharField(max_length=100, verbose_name="Zustand")
+    menge = models.PositiveIntegerField(verbose_name="Menge")
+
+    class Meta:
+        unique_together = ('auftrag', 'positionsnummer')
+        ordering = ['positionsnummer']
+        verbose_name = "Auftragsposition"
+        verbose_name_plural = "Auftragspositionen"
+
+    def save(self, *args, **kwargs):
+        if not self.positionsnummer:
+            last = Auftragsposition.objects.filter(
+                auftrag=self.auftrag
+            ).order_by('-positionsnummer').first()
+            self.positionsnummer = last.positionsnummer + 1 if last else 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.auftrag.auftragsnummer} - Pos {self.positionsnummer}"
