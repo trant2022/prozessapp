@@ -1,7 +1,12 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Sum
-from .models import Auftrag, Auftragsposition, Lieferung
+from .models import Auftrag, Auftragsposition, Lieferung, Lieferant
+from django.http import JsonResponse, HttpResponseBadRequest
+from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 import datetime
+import json
+
 
 def order_list(request):
     today = datetime.date.today()
@@ -47,13 +52,30 @@ def order_detail(request, pk):
     })
 
 def dashboard(request):
-    # alle Lieferungen, sortiert nach Liefernummer
+    lieferanten = Lieferant.objects.all()
     lieferungen = Lieferung.objects.order_by('liefernummer')
-    return render(request, 'process/dashboard.html', {
-        'lieferungen': lieferungen
+    return render(request, 'process/order_list.html', {
+        'lieferanten': lieferanten,
+        'orders': lieferungen,  # oder wie auch immer deine Daten heißen
     })
 
 def lieferung_angekommen(request, pk):
     lieferung = get_object_or_404(Lieferung, pk=pk)
     lieferung.mark_arrived()
     return redirect('dashboard')
+
+def lieferung_neu(request):
+    if request.method != "POST":
+        return HttpResponseBadRequest("Nur POST erlaubt")
+    try:
+        payload = json.loads(request.body)
+        l = Lieferant.objects.get(pk=payload['lieferant'])
+        lieferung = Lieferung.objects.create(
+            lieferant=l,
+            bestelldatum=timezone.localdate(),
+            erwartetes_datum=payload['erwartetes_datum'],
+            gesamtmenge=payload['gesamtmenge']
+        )
+        return JsonResponse({'success': True, 'liefernummer': lieferung.liefernummer})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

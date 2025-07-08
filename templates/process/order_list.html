@@ -6,8 +6,93 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="//unpkg.com/alpinejs" defer></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
+    <!-- Button zum Öffnen des Modals -->
+  <div class="p-4">
+    <button 
+      @click="open = true" 
+      class="bg-blue-600 text-white px-4 py-2 rounded">
+      Neue Lieferung
+    </button>
+  </div>
+
+    <!-- Modal + Wizard -->
+  <div 
+    x-data="{ open: false, step: 1, form: { lieferant:'', erwartetes_datum:'', gesamtmenge:'' } }"
+    x-show="open"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div @click.away="open = false; step = 1"
+         class="bg-white rounded-lg overflow-hidden w-full max-w-md">
+      
+      <!-- Header -->
+      <div class="px-6 py-4 border-b">
+        <h2 class="text-xl font-semibold">Neue Lieferung</h2>
+      </div>
+
+      <!-- Body -->
+      <div class="p-6 space-y-4">
+        <!-- Schritt 1: Lieferant -->
+        <div x-show="step === 1">
+          <label class="block font-medium">Lieferant</label>
+          <select x-model="form.lieferant" class="w-full border rounded p-2">
+            <option value="">-- bitte wählen --</option>
+            {% for l in lieferanten %}
+            <option value="{{ l.pk }}">{{ l.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Schritt 2: Bestelldatum (heute, readonly) -->
+        <div x-show="step === 2">
+          <label class="block font-medium">Bestelldatum</label>
+          <input type="date" :value="new Date().toISOString().substr(0,10)" readonly
+                 class="w-full border rounded p-2 bg-gray-100" />
+        </div>
+
+        <!-- Schritt 3: Erwartetes Datum -->
+        <div x-show="step === 3">
+          <label class="block font-medium">Erwartetes Datum</label>
+          <input type="date" x-model="form.erwartetes_datum"
+                 class="w-full border rounded p-2" />
+        </div>
+
+        <!-- Schritt 4: Menge Total -->
+        <div x-show="step === 4">
+          <label class="block font-medium">Menge Total</label>
+          <input type="number" x-model="form.gesamtmenge" min="1"
+                 class="w-full border rounded p-2" />
+        </div>
+      </div>
+
+      <!-- Footer: Navigation -->
+      <div class="px-6 py-4 border-t flex justify-between">
+        <button 
+          @click="step > 1 && step--"
+          :disabled="step === 1"
+          class="px-4 py-2 bg-gray-300 rounded disabled:opacity-50">
+          Zurück
+        </button>
+        <div class="space-x-2">
+          <button 
+            x-show="step < 4"
+            @click="step < 4 && step++"
+            class="px-4 py-2 bg-blue-500 text-white rounded">
+            Weiter
+          </button>
+          <button 
+            x-show="step === 4"
+            @click="submit()"
+            class="px-4 py-2 bg-green-500 text-white rounded">
+            Anlegen
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Header mit Logo -->
   <header class="flex justify-between items-center bg-white shadow p-4">
     <!-- Titel links -->
