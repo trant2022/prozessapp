@@ -3,206 +3,166 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dashboard Lieferungen</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <!-- Header mit Logo rechts -->
-  <header class="flex items-center justify-between bg-white shadow p-4">
-    <h1 class="text-2xl font-semibold">Dashboard</h1>
-    <img src="{% static 'images/Logo.png' %}" alt="Logo" class="h-10">
-  </header>
+  <!-- KPI-Cards -->
+  <section class="p-4">
+    <div class="grid grid-cols-3 gap-4">
+      <div class="bg-white shadow rounded-lg p-6 text-center">
+        <h3 class="text-lg font-medium text-gray-600">Bestellte Geräte</h3>
+        <p class="mt-2 text-3xl font-bold">{{ kpi.total_ordered }}</p>
+      </div>
+      <div class="bg-white shadow rounded-lg p-6 text-center">
+        <h3 class="text-lg font-medium text-gray-600">Verarbeitete intern</h3>
+        <p class="mt-2 text-3xl font-bold">{{ kpi.processed_internal }}</p>
+      </div>
+      <div class="bg-white shadow rounded-lg p-6 text-center">
+        <h3 class="text-lg font-medium text-gray-600">Verarbeitete extern</h3>
+        <p class="mt-2 text-3xl font-bold">{{ kpi.processed_external }}</p>
+      </div>
+    </div>
+  </section>
 
-  <main class="p-6 space-y-6">
+  <main class="p-4 space-y-6">
 
-<!-- Trigger-Button -->
-<button
-  id="openModal"
-  class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded shadow"
->
-  Neue Lieferung
-</button>
-
-<!-- Modal-Backdrop -->
-<div
-  id="modalBackdrop"
-  class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center"
->
-  <!-- Modal-Container -->
-  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
-    <!-- Header -->
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold">Neue Lieferung anlegen</h2>
-      <button id="closeModal" class="text-gray-400 hover:text-gray-600">
-        ✕
+    <!-- Button zum Anlegen -->
+    <div class="flex justify-end">
+      <button id="newBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        Neue Lieferung
       </button>
     </div>
 
-    <!-- Form -->
-    <form action="{% url 'create_lieferung' %}" method="post" class="space-y-4">
-      {% csrf_token %}
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <!-- Lieferant (Dropdown + Neu anlegen) -->
-        <div class="col-span-2">
-          <label for="lieferant" class="block text-sm font-medium text-gray-700 mb-1">
-            Lieferant
-          </label>
-          <div class="flex space-x-2">
-            <select
-              name="lieferant"
-              id="lieferant"
-              class="flex-1 block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-              required
-            >
-              <option value="">-- auswählen --</option>
-              {% for sup in lieferanten %}
-                <option value="{{ sup.pk }}">{{ sup.name }}</option>
-              {% endfor %}
-            </select>
-            <button
-              type="button"
-              id="addSupplierBtn"
-              class="bg-green-500 hover:bg-green-600 text-white px-3 rounded-lg"
-            >
-              +
-            </button>
-          </div>
-        </div>
-
-        <!-- Bestelldatum -->
-        <div>
-          <label for="bestelldatum" class="block text-sm font-medium text-gray-700 mb-1">
-            Bestelldatum
-          </label>
-          <input
-            type="date"
-            name="bestelldatum"
-            id="bestelldatum"
-            value="{{ today }}"
-            class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-
-        <!-- Erwartetes Datum -->
-        <div>
-          <label for="erwartetes_datum" class="block text-sm font-medium text-gray-700 mb-1">
-            Erwartetes Ankunftsdatum
-          </label>
-          <input
-            type="date"
-            name="erwartetes_datum"
-            id="erwartetes_datum"
-            class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-            required
-          />
-        </div>
-
-        <!-- Menge Total -->
-        <div class="col-span-2">
-          <label for="gesamtmenge" class="block text-sm font-medium text-gray-700 mb-1">
-            Menge Total
-          </label>
-          <input
-            type="number"
-            name="gesamtmenge"
-            id="gesamtmenge"
-            min="1"
-            class="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-            placeholder="z.B. 50"
-            required
-          />
-        </div>
-      </div>
-
-      <!-- Submit -->
-      <div class="flex justify-end">
-        <button
-          type="submit"
-          class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow"
-        >
-          Anlegen
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
-
-    <!-- KPI-Boxen -->
-    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="bg-white shadow rounded-lg p-4 text-center">
-        <h2 class="text-lg font-medium">Bestellte Geräte</h2>
-        <p class="text-3xl font-bold">{{ kpi.total_ordered }}</p>
-      </div>
-      <div class="bg-white shadow rounded-lg p-4 text-center">
-        <h2 class="text-lg font-medium">Verarbeitete Geräte intern</h2>
-        <p class="text-3xl font-bold">{{ kpi.processed_internal }}</p>
-      </div>
-      <div class="bg-white shadow rounded-lg p-4 text-center">
-        <h2 class="text-lg font-medium">Verarbeitete Geräte extern</h2>
-        <p class="text-3xl font-bold">{{ kpi.processed_external }}</p>
-      </div>
-    </section>
-
-    <!-- Offene Lieferaufträge -->
-    <section class="bg-white shadow rounded-lg p-4">
-      <h2 class="text-xl font-semibold mb-4">Offene Lieferaufträge</h2>
-      <table class="min-w-full bg-white">
-        <thead class="bg-gray-100">
+    <!-- Lieferungsliste -->
+    <section class="bg-white shadow rounded-lg overflow-hidden">
+      <table class="min-w-full">
+        <thead class="bg-gray-200">
           <tr>
-            <th class="py-2 px-4 text-left">#</th>
-            <th class="py-2 px-4 text-left">Lieferant</th>
-            <th class="py-2 px-4 text-left">Bestelldatum</th>
-            <th class="py-2 px-4 text-left">Erwartet in (Wochen)</th>
-            <th class="py-2 px-4 text-left">Menge Total</th>
-            <th class="py-2 px-4 text-left">Aktion</th>
+            <th class="py-2 text-center">Lieferant</th>
+            <th class="py-2 text-center">Bestellt</th>
+            <th class="py-2 text-center">Erwartet</th>
+            <th class="py-2 text-center">Effektiv</th>
+            <th class="py-2 text-center">Menge</th>
+            <th class="py-2 text-center">Aktion</th>
           </tr>
         </thead>
         <tbody>
-          {% for lieferung in lieferungen %}
-          <tr class="border-b hover:bg-gray-50">
-            <td class="py-2 px-4">{{ forloop.counter }}</td>
-            <td class="py-2 px-4">{{ lieferung.lieferant.name }}</td>
-            <td class="py-2 px-4">{{ lieferung.bestelldatum|date:"d.m.Y" }}</td>
-            <td class="py-2 px-4">{{ lieferung.weeks_to_arrival }}</td>
-            <td class="py-2 px-4">{{ lieferung.gesamtmenge }}</td>
-            <td class="py-2 px-4">
-              {% if not lieferung.effektives_datum %}
-                <form action="{% url 'lieferung_angekommen' lieferung.liefernummer %}" method="post">
-                  {% csrf_token %}
-                  <button type="submit"
-                          class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">
-                    Lieferung angekommen
-                  </button>
-                </form>
+        {% for l in lieferungen %}
+          <!-- Zeile mit den Daten -->
+          <tr class="border-b">
+            <td class="py-2 text-center">{{ l.lieferant.name }}</td>
+            <td class="py-2 text-center">{{ l.bestelldatum|date:"d.m.Y" }}</td>
+            <td class="py-2 text-center">
+              {% if l.erwartetes_datum %}
+                {{ l.erwartetes_datum|date:"d.m.Y" }}
+              {% endif %}
+            </td>
+            <td class="py-2 text-center">
+              {% if l.effektives_datum %}
+                {{ l.effektives_datum|date:"d.m.Y" }}
               {% else %}
-                {{ lieferung.effektives_datum|date:"d.m.Y" }}
+                <form method="post" action="{% url 'lieferung_angekommen' l.liefernummer %}">
+                  {% csrf_token %}
+                  <button class="bg-green-600 text-white px-3 py-1 rounded">Angekommen</button>
+                </form>
+              {% endif %}
+            </td>
+            <td class="py-2 text-center">{{ l.gesamtmenge }}</td>
+            <td class="py-2 text-center">
+              <!-- hier evtl. Edit-Link o. ä. -->
+              <a href="{% url 'lieferung_edit' l.liefernummer %}" class="text-blue-600 hover:underline">Bearbeiten</a>
+            </td>
+          </tr>
+          <!-- Zeile mit dem Kommentarfeld -->
+          <tr class="bg-gray-50">
+            <td colspan="6" class="px-4 py-2">
+              <!-- Anzeige oder Bearbeiten -->
+              {% if l.kommentar %}
+                <p>{{ l.kommentar }}</p>
+                <a href="{% url 'lieferung_edit' l.liefernummer %}#kommentar" class="text-sm text-gray-500 hover:underline">
+                  Kommentar bearbeiten
+                </a>
+              {% else %}
+                <a href="{% url 'lieferung_edit' l.liefernummer %}#kommentar"
+                   class="text-sm text-gray-500 hover:underline">
+                  + Kommentar hinzufügen
+                </a>
               {% endif %}
             </td>
           </tr>
-          {% empty %}
+        {% empty %}
           <tr>
-            <td colspan="6" class="py-4 px-4 text-center text-gray-500">
-              Keine offenen Lieferaufträge.
-            </td>
+            <td colspan="6" class="py-4 text-center text-gray-500">Keine offenen Lieferungen.</td>
           </tr>
-          {% endfor %}
+        {% endfor %}
         </tbody>
       </table>
     </section>
 
   </main>
 
+  <!-- Modal „Neue Lieferung“ (versteckt) -->
+  <div id="newModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-1/3">
+      <h2 class="text-xl mb-4 text-center">Neue Lieferung anlegen</h2>
+      <form method="post" action="{% url 'create_lieferung' %}" class="space-y-4">
+        {% csrf_token %}
+        <!-- Lieferant -->
+        <div>
+          <label class="block mb-1">Lieferant</label>
+          <input list="lieferanten" name="lieferant_name"
+                 class="w-full border p-2 text-center"
+                 placeholder="Name eingeben oder suchen…" required>
+          <datalist id="lieferanten">
+            {% for s in lieferanten %}
+              <option value="{{ s.name }}"></option>
+            {% endfor %}
+          </datalist>
+        </div>
+        <!-- Bestelldatum -->
+        <div>
+          <label class="block mb-1">Bestelldatum</label>
+          <input type="date" name="bestelldatum" value="{{ today|date:'Y-m-d' }}"
+                 class="w-full border p-2 text-center">
+        </div>
+        <!-- Erwartetes Datum -->
+        <div>
+          <label class="block mb-1">Erwartetes Ankunftsdatum</label>
+          <input type="date" name="erwartetes_datum"
+                 class="w-full border p-2 text-center">
+        </div>
+        <!-- Menge -->
+        <div>
+          <label class="block mb-1">Menge Total</label>
+          <input type="number" name="gesamtmenge" min="1"
+                 class="w-full border p-2 text-center" required>
+        </div>
+        <!-- Kommentar -->
+        <div>
+          <label class="block mb-1">Kommentar</label>
+          <textarea name="kommentar" rows="3"
+                    class="w-full border p-2"></textarea>
+        </div>
+
+        <div class="flex justify-between">
+          <button type="button" id="closeNew" class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">Zurück</button>
+          <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+            Anlegen
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     // Modal öffnen/schließen
-    document.getElementById('openModal').addEventListener('click', () => {
-      document.getElementById('modal').classList.remove('hidden');
-    });
-    document.getElementById('closeModal').addEventListener('click', () => {
-      document.getElementById('modal').classList.add('hidden');
-    });
+    document.getElementById('newBtn').onclick = () =>
+      document.getElementById('newModal').classList.remove('hidden');
+    document.getElementById('closeNew').onclick = () =>
+      document.getElementById('newModal').classList.add('hidden');
   </script>
 
 </body>

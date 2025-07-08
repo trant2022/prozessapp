@@ -1,0 +1,21 @@
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import Lieferung, Lieferant
+
+def lieferung_edit(request, pk):
+    lieferung = get_object_or_404(Lieferung, liefernummer=pk)
+
+    if request.method == 'POST':
+        # Felder aus dem Formular übernehmen
+        lieferung.bestelldatum       = request.POST.get('bestelldatum', lieferung.bestelldatum)
+        if ed := request.POST.get('erwartetes_datum'):
+            lieferung.erwartetes_datum = ed
+        lieferung.gesamtmenge        = int(request.POST.get('gesamtmenge', lieferung.gesamtmenge))
+        lieferung.kommentar          = request.POST.get('kommentar', lieferung.kommentar)
+        lieferung.save()
+        return redirect('order_list')
+
+    # GET: Formular mit den aktuellen Werten rendern
+    return render(request, 'process/lieferung_edit.html', {
+        'lieferung': lieferung,
+        'lieferanten': Lieferant.objects.all(),
+    })

@@ -17,40 +17,45 @@ def generate_number():
 
 
 def order_list(request):
-    today = datetime.date.today()
-    lieferungen = Lieferung.objects.order_by('liefernummer')
-    lieferanten = Lieferant.objects.order_by('name')
-    heute       = timezone.localdate()
-    orders = (
-        Auftrag.objects
-        .filter(datensatz_importiert=False)
-        .select_related('lieferant')
-        .order_by('auftragsnummer')
-    )
+    # 1) POST: neue Lieferung anlegen
+    if request.method == "POST":
+        lieferant_id     = request.POST.get("lieferant")
+        erwartetes_datum = request.POST.get("erwartetes_datum")
+        gesamtmenge      = request.POST.get("gesamtmenge")
 
-    total_ordered = orders.aggregate(sum=Sum('gesamtmenge'))['sum'] or 0
-    processed_internal = (
-        Auftrag.objects
-        .filter(datensatz_importiert=True)
-        .aggregate(sum=Sum('gesamtmenge'))['sum'] or 0
-    )
-    processed_external = (
-        Auftrag.objects
-        .filter(braendi_abgeholt__isnull=False)
-        .aggregate(sum=Sum('gesamtmenge'))['sum'] or 0
-    )
+        if lieferant_id and erwartetes_datum and gesamtmenge:
+            supplier = get_object_or_404(Lieferant, pk=lieferant_id)
+            Lieferung.objects.create(
+                lieferant=supplier,
+                bestelldatum=timezone.localdate(),
+                erwartetes_datum=erwartetes_datum,
+                gesamtmenge=int(gesamtmenge),
+            )
+        return redirect("order_list")
 
-    return render(request, 'process/order_list.html', {
-        'lieferungen': lieferungen,
-        'lieferanten': lieferanten,
-        'orders': orders,
-        'today': heute,
-        'kpi': {
-            'total_ordered': total_ordered,
-            'processed_internal': processed_internal,
-            'processed_external': processed_external,
+    # 2) GET: Dashboard rendern
+    lieferungen  = Lieferung.objects.all()
+    lieferanten  = Lieferant.objects.all()
+    today        = timezone.localdate()
+
+    # KPI-Beispiele
+    total_ordered = lieferungen.aggregate(total=Sum("gesamtmenge"))["total"] or 0
+    processed     = lieferungen.filter(effektives_datum__isnull=False).aggregate(total=Sum("gesamtmenge"))["total"] or 0
+    # external_processed z.B. 0, falls Du später extern definiert
+    external_processed = 0
+
+    context = {
+        "lieferungen": lieferungen,
+        "lieferanten": lieferanten,
+        "today": today,
+        "kpi": {
+            "total_ordered": total_ordered,
+            "internal_processed": processed,
+            "external_processed": external_processed,
         }
-    })
+    }
+    return render(request, "process/order_list.html", context)
+
 
 def order_detail(request, pk):
     order = get_object_or_404(Auftrag, pk=pk)
@@ -82,28 +87,44 @@ def dashboard(request):
 
 @require_POST
 
+
 def create_lieferung(request):
-    if request.method == 'POST':
-        # wenn neuer Lieferant angegeben, zuerst anlegen:
-        neuer_name = request.POST.get('neuer_lieferant')
-        if neuer_name:
-            supplier = Lieferant.objects.create(
-                nummer=generate_number(),
-                name=neuer_name
-            )
-        else:
-            supplier = Lieferant.objects.get(pk=request.POST['lieferant'])
+    if request.method == "POST":
+        name = request.POST.get('lieferant_name')
+        # Suche oder lege neu an
+        supplier, created = Lieferant.objects.get_or_create(
+            name=name,
+            defaults={'nummer': generate_supplier_number()}
+        )
+
+        bestelldatum = request.POST.get('bestelldatum')
+        erwartetes = request.POST.get('erwartetes_datum') or None
+        menge = request.POST.get('gesamtmenge')
+        kommentar = request.POST.get('kommentar', '')
+
         Lieferung.objects.create(
             lieferant=supplier,
-            bestelldatum=datetime.date.today(),
-            erwartetes_datum=request.POST['erwartetes_datum'],
-            gesamtmenge=request.POST['gesamtmenge'],
+            bestelldatum=bestelldatum,
+            erwartetes_datum=erwartetes,
+            gesamtmenge=menge,
+            kommentar=kommentar
         )
-    return redirect('order_list')
+        return redirect('order_list')
+
+    # falls du das Formular auch per GET rendern möchtest
+    lieferanten = Lieferant.objects.all()
+    return render(request, 'process/order_list.html', {'lieferanten': lieferanten, 'lieferungen': Lieferung.objects.all(), 'kpi': {...}})
+
 
 def lieferung_angekommen(request, pk):
-    if request.method == 'POST':
-        lieferung = Lieferung.objects.get(pk=pk)
-        lieferung.effektives_datum = datetime.date.today()
-        lieferung.save()
-    return redirect('order_list')
+    if request.method == "POST":
+        lieferung = get_object_or_404(Lieferung, pk=pk)
+        lieferung.mark_arrived()
+    return redirect("order_list")
+
+def generate_supplier_number():
+    last = Lieferant.objects.order_by('-pk').first()
+    if last and last.nummer.isdigit():
+        return str(int(last.nummer) + 1)
+    return "1"
+

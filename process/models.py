@@ -2,15 +2,8 @@ from django.db import models
 from django.utils import timezone
 
 class Lieferant(models.Model):
-    nummer = models.CharField(
-        max_length=50,
-        unique=True,
-        verbose_name="Lieferantennummer"
-    )
-    name = models.CharField(
-        max_length=200,
-        verbose_name="Lieferant"
-    )
+    nummer = models.CharField(max_length=50, unique=True, verbose_name="Lieferantennummer")
+    name = models.CharField(max_length=200, verbose_name="Lieferant")
 
     class Meta:
         verbose_name = "Lieferant"
@@ -71,14 +64,14 @@ class Gerätemodell(models.Model):
         return f"{self.typ} - {self.name}"
 
 
-from django.db import models
-from django.utils import timezone  # <- hinzufügen
-
 class Lieferung(models.Model):
     liefernummer = models.AutoField(
         primary_key=True,
         verbose_name="Liefernummer"
     )
+    kommentar = models.TextField(
+        blank=True, verbose_name="Kommentar"
+        )
     lieferant = models.ForeignKey(
         Lieferant,
         on_delete=models.PROTECT,
@@ -88,10 +81,16 @@ class Lieferung(models.Model):
         verbose_name="Bestelldatum"
     )
     erwartetes_datum = models.DateField(
+        null=True,
+        blank=True,
         verbose_name="Erwartetes Ankunftsdatum"
     )
     gesamtmenge = models.PositiveIntegerField(
         verbose_name="Menge Total"
+    )
+    kommentar = models.TextField(
+        blank=True,
+        verbose_name="Kommentar"
     )
     effektives_datum = models.DateField(
         null=True,
@@ -111,6 +110,7 @@ class Lieferung(models.Model):
 
     def __str__(self):
         return f"{self.liefernummer} – {self.lieferant.name}"
+
 
 
 class Auftrag(models.Model):
