@@ -4,12 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lieferung {{ lieferung.liefernummer }}</title>
+  <title>Lieferauftrag {{ lieferung.liefernummer }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
   <header class="flex items-center justify-between p-4 bg-white shadow">
-    <h1 class="text-2xl">Lieferung {{ lieferung.liefernummer }}</h1>
+    <h1 class="text-2xl">Lieferauftrag {{ lieferung.liefernummer }}</h1>
+    <!-- Hier den Link zurück zur List-View anpassen -->
     <a href="{% url 'lieferung_list' %}" class="text-blue-600 hover:underline">&larr; Zurück</a>
   </header>
 
@@ -24,22 +25,22 @@
         <dd>{{ lieferung.bestelldatum|date:"d.m.Y" }}</dd>
       </div>
       <div>
-        <dt class="font-medium">Erwartetes Datum</dt>
+        <dt class="font-medium">Erwartet</dt>
         <dd>
           {% if lieferung.erwartetes_datum %}
             {{ lieferung.erwartetes_datum|date:"d.m.Y" }}
           {% else %}
-            &ndash;
+            –  
           {% endif %}
         </dd>
       </div>
       <div>
-        <dt class="font-medium">Effektives Datum</dt>
+        <dt class="font-medium">Effektiv</dt>
         <dd>
           {% if lieferung.effektives_datum %}
             {{ lieferung.effektives_datum|date:"d.m.Y" }}
           {% else %}
-            &ndash;
+            –  
           {% endif %}
         </dd>
       </div>
@@ -53,19 +54,22 @@
       </div>
     </dl>
 
+    <!-- Positionen-Liste -->
     <section class="mt-6 bg-white shadow rounded-lg p-4">
       <h2 class="text-xl mb-2">Positionen</h2>
+      {% if lieferung.positionen.exists %}
       <ul class="list-disc list-inside space-y-1">
-        {% for p in positionen %}
-          <li>
-            {{ p.positionsnummer }}:
-            {{ p.geraetetyp.name }} {{ p.geraetemodell.name }}
-            – {{ p.menge }}×
-          </li>
-        {% empty %}
-          <li>Keine Positionen vorhanden.</li>
+        {% for p in lieferung.positionen.all %}
+        <li>
+          Pos {{ p.positionsnummer }}: {{ p.geraetetyp }} – {{ p.geraetemodell }}  
+          ({{ p.farbe }} / {{ p.speicher }} / {{ p.ram }} / {{ p.prozessor }} / {{ p.zustand }})  
+          Menge: {{ p.menge }}
+        </li>
         {% endfor %}
       </ul>
+      {% else %}
+      <p class="italic text-gray-500">Keine Positionen angelegt.</p>
+      {% endif %}
     </section>
   </main>
 </body>
