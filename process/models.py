@@ -19,6 +19,13 @@ class Lieferant(models.Model):
     def __str__(self):
         return f"{self.name} ({self.nummer})"
 
+    @staticmethod
+    def generate_number():
+        last = Lieferant.objects.order_by('-pk').first()
+        if last and last.nummer.isdigit():
+            return str(int(last.nummer) + 1)
+        return "1"
+
 
 class Lieferung(models.Model):
     liefernummer = models.AutoField(
@@ -34,21 +41,18 @@ class Lieferung(models.Model):
         verbose_name="Bestelldatum"
     )
     erwartetes_datum = models.DateField(
-        null=True,
-        blank=True,
+        null=True, blank=True,
         verbose_name="Erwartetes Ankunftsdatum"
     )
     gesamtmenge = models.PositiveIntegerField(
         verbose_name="Menge Total"
     )
-    kommentar = models.TextField(
-        blank=True,
-        verbose_name="Kommentar"
-    )
     effektives_datum = models.DateField(
-        null=True,
-        blank=True,
+        null=True, blank=True,
         verbose_name="Effektives Ankunftsdatum"
+    )
+    kommentar = models.TextField(
+        blank=True, verbose_name="Kommentar"
     )
 
     class Meta:
@@ -57,7 +61,6 @@ class Lieferung(models.Model):
         ordering = ['liefernummer']
 
     def mark_arrived(self):
-        """Setzt das effektive Datum auf heute."""
         self.effektives_datum = timezone.localdate()
         self.save()
 
@@ -66,11 +69,7 @@ class Lieferung(models.Model):
 
 
 class Gerätetyp(models.Model):
-    name = models.CharField(
-        max_length=100,
-        unique=True,
-        verbose_name="Gerätetyp"
-    )
+    name = models.CharField(max_length=100, unique=True, verbose_name="Gerätetyp")
 
     class Meta:
         verbose_name = "Gerätetyp"
@@ -87,10 +86,7 @@ class Gerätemodell(models.Model):
         related_name="modelle",
         verbose_name="Gerätetyp"
     )
-    name = models.CharField(
-        max_length=100,
-        verbose_name="Modellbezeichnung"
-    )
+    name = models.CharField(max_length=100, verbose_name="Modellbezeichnung")
 
     class Meta:
         unique_together = ("typ", "name")
@@ -98,15 +94,15 @@ class Gerätemodell(models.Model):
         verbose_name_plural = "Gerätemodelle"
 
     def __str__(self):
-        return f"{self.typ} – {self.name}"
+        return f"{self.typ} - {self.name}"
 
 
-class Auftragsposition(models.Model):
-    auftrag = models.ForeignKey(
+class Lieferungsposition(models.Model):
+    lieferung = models.ForeignKey(
         Lieferung,
         on_delete=models.CASCADE,
-        related_name='positionen',
-        verbose_name="Lieferauftrag"
+        related_name="positionen",
+        verbose_name="Lieferung"
     )
     positionsnummer = models.PositiveIntegerField(verbose_name="Positionsnummer")
     geraetetyp = models.ForeignKey(
@@ -127,10 +123,16 @@ class Auftragsposition(models.Model):
     menge = models.PositiveIntegerField(verbose_name="Menge")
 
     class Meta:
-        unique_together = ('auftrag', 'positionsnummer')
+        unique_together = ('lieferung', 'positionsnummer')
         ordering = ['positionsnummer']
-        verbose_name = "Auftragsposition"
-        verbose_name_plural = "Auftragspositionen"
+        verbose_name = "Lieferungsposition"
+        verbose_name_plural = "Lieferungspositionen"
+
+    def save(self, *args, **kwargs):
+        if not self.positionsnummer:
+            last = Lieferungsposition.objects.filter(lieferung=self.lieferung).order_by('-positionsnummer').first()
+            self.positionsnummer = last.positionsnummer + 1 if last else 1
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.auftrag.liefernummer} – Pos {self.positionsnummer}"
+        return f"{self.lieferung.liefernummer} - Pos {self.positionsnummer}"
