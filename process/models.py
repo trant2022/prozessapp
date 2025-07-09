@@ -44,6 +44,10 @@ class Lieferung(models.Model):
         null=True, blank=True,
         verbose_name="Erwartetes Ankunftsdatum"
     )
+    liefertermin = models.DateField(
+        null=True, blank=True,
+        verbose_name="Liefertermin"
+    )
     gesamtmenge = models.PositiveIntegerField(
         verbose_name="Menge Total"
     )
@@ -53,6 +57,9 @@ class Lieferung(models.Model):
     )
     kommentar = models.TextField(
         blank=True, verbose_name="Kommentar"
+    )
+    confirmed_menge = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="Bestätigte Menge"
     )
 
     class Meta:

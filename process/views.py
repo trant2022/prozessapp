@@ -1,10 +1,11 @@
+import json
 import pandas as pd
 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Sum
-from django.http import HttpResponseBadRequest
-from django.views.decorators.http import require_POST
-from django.utils import timezone
+from django.shortcuts             import render, get_object_or_404, redirect
+from django.db.models             import Sum
+from django.http                  import HttpResponseBadRequest, JsonResponse
+from django.views.decorators.http import require_POST, require_http_methods
+from django.utils                  import timezone
 
 from .models import (
     Lieferant,
@@ -16,6 +17,10 @@ from .models import (
 
 
 def generate_number():
+    """
+    Generiert eine neue Lieferantennummer, basierend auf der zuletzt
+    angelegten Nummer (nur Ziffern).
+    """
     last = Lieferant.objects.order_by('-nummer').first()
     if last and last.nummer.isdigit():
         return str(int(last.nummer) + 1)
@@ -23,21 +28,24 @@ def generate_number():
 
 
 def lieferung_list(request):
+    """
+    Zeigt das Dashboard mit allen Lieferungen und KPIs an.
+    """
     lieferungen = Lieferung.objects.all()
     lieferanten = Lieferant.objects.all()
 
     devices_on_the_way = (
         Lieferung.objects
-            .filter(effektives_datum__isnull=True)
-            .aggregate(total=Sum('gesamtmenge'))['total'] or 0
+                  .filter(effektives_datum__isnull=True)
+                  .aggregate(total=Sum('gesamtmenge'))['total']
+        or 0
     )
     devices_arrived = (
         Lieferung.objects
-            .filter(effektives_datum__isnull=False)
-            .aggregate(total=Sum('gesamtmenge'))['total'] or 0
+                  .filter(effektives_datum__isnull=False)
+                  .aggregate(total=Sum('gesamtmenge'))['total']
+        or 0
     )
-    processed_internal = devices_arrived
-    processed_external = 0
 
     context = {
         'lieferungen': lieferungen,
@@ -45,80 +53,142 @@ def lieferung_list(request):
         'kpi': {
             'devices_on_the_way': devices_on_the_way,
             'devices_arrived': devices_arrived,
-            'processed_internal': processed_internal,
-            'processed_external': processed_external,
+            'processed_internal': devices_arrived,
+            'processed_external': 0,
         },
-        'today': timezone.localdate(),  # für das Default-Datum im Modal
+        'today': timezone.localdate(),
     }
     return render(request, "process/order_list.html", context)
 
 
 @require_POST
 def create_lieferung(request):
-    supplier_name    = request.POST.get('lieferant_name')
+    """
+    Legt eine neue Lieferung an. POST-Parameter:
+      - lieferant_name
+      - bestelldatum
+      - erwartetes_datum (optional)
+      - liefertermin (optional)
+      - gesamtmenge
+      - kommentar (optional)
+    """
+    supplier_name    = request.POST.get('lieferant_name', '').strip()
     bestelldatum     = request.POST.get('bestelldatum')
     erwartetes_datum = request.POST.get('erwartetes_datum') or None
+    liefertermin     = request.POST.get('liefertermin')   or None
     gesamtmenge      = request.POST.get('gesamtmenge')
     kommentar        = request.POST.get('kommentar', '')
 
     if supplier_name and bestelldatum and gesamtmenge:
-        # Lieferant nach Name holen (Name kommt aus <datalist>)
-        lieferant = get_object_or_404(Lieferant, name=supplier_name)
+        try:
+            lieferant = Lieferant.objects.get(name=supplier_name)
+        except Lieferant.DoesNotExist:
+            return HttpResponseBadRequest(
+                f"Lieferant „{supplier_name}“ existiert nicht."
+            )
+
         Lieferung.objects.create(
-            lieferant=lieferant,
-            bestelldatum=bestelldatum,
-            erwartetes_datum=erwartetes_datum,
-            gesamtmenge=int(gesamtmenge),
-            kommentar=kommentar,
+            lieferant        = lieferant,
+            bestelldatum     = bestelldatum,
+            erwartetes_datum = erwartetes_datum,
+            liefertermin     = liefertermin,
+            gesamtmenge      = int(gesamtmenge),
+            kommentar        = kommentar,
         )
+
     return redirect('lieferung_list')
 
 
 @require_POST
 def lieferung_angekommen(request, pk):
-    lieferung = get_object_or_404(Lieferung, pk=pk)
+    """
+    Markiert eine Lieferung als angekommen. Erwartet optional JSON-Body:
+      { "delivered_quantity": <int> }
+    und speichert diese Menge in `confirmed_menge`.
+    """
+    lieferung = get_object_or_404(Lieferung, liefernummer=pk)
+
+    # JSON payload auslesen
+    try:
+        payload = json.loads(request.body)
+        qty = int(payload.get('delivered_quantity', 0))
+        lieferung.confirmed_menge = qty
+    except Exception:
+        # kein gültiges JSON → ignorieren
+        pass
+
     lieferung.mark_arrived()
-    return redirect('lieferung_detail', pk=pk)
+    lieferung.save()
+    return JsonResponse({'status': 'ok'})
+
+
+@require_POST
+def lieferung_loeschen(request, pk):
+    """
+    Löscht eine Lieferung vollständig.
+    """
+    lieferung = get_object_or_404(Lieferung, liefernummer=pk)
+    lieferung.delete()
+    return JsonResponse({'status': 'ok'})
 
 
 def lieferung_detail(request, pk):
+    """
+    Zeigt die Detailansicht einer einzelnen Lieferung an.
+    """
     lieferung = get_object_or_404(Lieferung, liefernummer=pk)
     return render(request, "process/lieferung_detail.html", {
         'lieferung': lieferung
     })
 
 
+@require_http_methods(["GET", "POST"])
 def lieferung_edit(request, pk):
+    """
+    GET  /lieferung/<pk>/bearbeiten/ → liefert JSON mit aktuellen Felddaten
+    POST /lieferung/<pk>/bearbeiten/ → speichert die geänderten Felder
+    """
     lieferung = get_object_or_404(Lieferung, liefernummer=pk)
 
     if request.method == 'POST':
-        lieferung.bestelldatum      = request.POST.get('bestelldatum', lieferung.bestelldatum)
-        ed = request.POST.get('erwartetes_datum')
-        lieferung.erwartetes_datum  = ed if ed else None
-        lieferung.gesamtmenge       = int(request.POST.get('gesamtmenge', lieferung.gesamtmenge))
-        lieferung.kommentar         = request.POST.get('kommentar', lieferung.kommentar)
+        supplier = request.POST.get('lieferant_name', '').strip()
+        lieferung.lieferant        = get_object_or_404(Lieferant, name=supplier)
+        lieferung.bestelldatum     = request.POST.get('bestelldatum')
+        lieferung.erwartetes_datum = request.POST.get('erwartetes_datum') or None
+        lieferung.liefertermin     = request.POST.get('liefertermin')   or None
+        lieferung.gesamtmenge      = int(request.POST.get('gesamtmenge', lieferung.gesamtmenge))
+        lieferung.kommentar        = request.POST.get('kommentar', lieferung.kommentar)
         lieferung.save()
         return redirect('lieferung_list')
 
-    return render(request, "process/lieferung_edit.html", {
-        'lieferung': lieferung,
-        'lieferanten': Lieferant.objects.all(),
-    })
+    # GET → JSON-Antwort für das Edit-Formular
+    data = {
+        'lieferant':        lieferung.lieferant.name,
+        'bestelldatum':     lieferung.bestelldatum.isoformat(),
+        'erwartetes_datum': lieferung.erwartetes_datum.isoformat() if lieferung.erwartetes_datum else '',
+        'liefertermin':     lieferung.liefertermin.isoformat()   if lieferung.liefertermin   else '',
+        'gesamtmenge':      lieferung.gesamtmenge,
+        'kommentar':        lieferung.kommentar,
+    }
+    return JsonResponse(data)
 
 
 @require_POST
 def upload_positions(request):
+    """
+    Liest ein Excel ein und legt für jede Zeile eine
+    Lieferungsposition an (automatisch nummeriert).
+    """
     positions_file = request.FILES.get('positions_file')
     if not positions_file:
         return HttpResponseBadRequest("Keine Datei ausgewählt")
 
-    # Excel einlesen
     try:
         df = pd.read_excel(positions_file)
     except Exception as e:
         return HttpResponseBadRequest(f"Dateilesefehler: {e}")
 
-    # Über alle Zeilen iterieren und Positionen anlegen
+    lieferung = None
     for _, row in df.iterrows():
         nr = row.get('Liefernummer')
         if pd.isna(nr):
@@ -128,13 +198,13 @@ def upload_positions(request):
         except (Lieferung.DoesNotExist, ValueError):
             continue
 
-        # Gerätetyp bestimmen
+        # Gerätetyp
         typ_name = row.get('Geräteart') or row.get('Gerätetyp') or row.get('Geraetetyp')
         if not typ_name or pd.isna(typ_name):
             continue
         typ, _ = Gerätetyp.objects.get_or_create(name=str(typ_name).strip())
 
-        # Modell bestimmen
+        # Gerätemodell
         modell_name = row.get('Gerätemodell') or row.get('Modell')
         if not modell_name or pd.isna(modell_name):
             continue
@@ -143,22 +213,21 @@ def upload_positions(request):
             name=str(modell_name).strip()
         )
 
-        # Menge
         menge = row.get('Menge')
         menge = int(menge) if not pd.isna(menge) else 0
 
-        # Position anlegen (positionsnummer wird automatisch vergeben)
         Lieferungsposition.objects.create(
-            lieferung=lieferung,
-            geraetetyp=typ,
-            geraetemodell=modell,
-            farbe=str(row.get('Farbe') or '').strip(),
-            speicher=str(row.get('Speicher') or '').strip(),
-            ram=str(row.get('RAM') or '').strip(),
-            prozessor=str(row.get('Prozessor') or '').strip(),
-            zustand=str(row.get('Zustand') or '').strip(),
-            menge=menge
+            lieferung      = lieferung,
+            geraetetyp     = typ,
+            geraetemodell  = modell,
+            farbe          = str(row.get('Farbe') or '').strip(),
+            speicher       = str(row.get('Speicher') or '').strip(),
+            ram            = str(row.get('RAM') or '').strip(),
+            prozessor      = str(row.get('Prozessor') or '').strip(),
+            zustand        = str(row.get('Zustand') or '').strip(),
+            menge          = menge
         )
 
-    # Zur Detail-Ansicht der zuletzt bearbeiteten Lieferung
-    return redirect('lieferung_detail', pk=lieferung.liefernummer)
+    if lieferung:
+        return redirect('lieferung_detail', pk=lieferung.liefernummer)
+    return redirect('lieferung_list')
