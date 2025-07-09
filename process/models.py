@@ -37,9 +37,7 @@ class Lieferung(models.Model):
         on_delete=models.PROTECT,
         verbose_name="Lieferant"
     )
-    bestelldatum = models.DateField(
-        verbose_name="Bestelldatum"
-    )
+    bestelldatum = models.DateField(verbose_name="Bestelldatum")
     erwartetes_datum = models.DateField(
         null=True, blank=True,
         verbose_name="Erwartetes Ankunftsdatum"
@@ -48,18 +46,15 @@ class Lieferung(models.Model):
         null=True, blank=True,
         verbose_name="Liefertermin"
     )
-    gesamtmenge = models.PositiveIntegerField(
-        verbose_name="Menge Total"
-    )
+    gesamtmenge = models.PositiveIntegerField(verbose_name="Menge Total")
     effektives_datum = models.DateField(
         null=True, blank=True,
         verbose_name="Effektives Ankunftsdatum"
     )
-    kommentar = models.TextField(
-        blank=True, verbose_name="Kommentar"
-    )
+    kommentar = models.TextField(blank=True, verbose_name="Kommentar")
     confirmed_menge = models.PositiveIntegerField(
-        null=True, blank=True, verbose_name="Bestätigte Menge"
+        null=True, blank=True,
+        verbose_name="Bestätigte Menge"
     )
 
     class Meta:
@@ -112,6 +107,8 @@ class Lieferungsposition(models.Model):
         verbose_name="Lieferung"
     )
     positionsnummer = models.PositiveIntegerField(verbose_name="Positionsnummer")
+
+    # bereits vorhandene Felder
     geraetetyp = models.ForeignKey(
         Gerätetyp,
         on_delete=models.PROTECT,
@@ -129,6 +126,34 @@ class Lieferungsposition(models.Model):
     zustand = models.CharField(max_length=100, verbose_name="Zustand")
     menge = models.PositiveIntegerField(verbose_name="Menge")
 
+    # neu hinzukommende Felder
+    auftragsart               = models.CharField(max_length=200, blank=True, verbose_name="Auftragsart")
+    kundenart                 = models.CharField(max_length=200, blank=True, verbose_name="Kundenart")
+    kunde                     = models.CharField(max_length=200, blank=True, verbose_name="Kunde")
+    ek_netto_fw               = models.CharField(max_length=100, blank=True, verbose_name="EK netto FW")
+    waehrung                  = models.CharField(max_length=50,  blank=True, verbose_name="Währung")
+    logistikkosten_geraet_fw  = models.CharField(max_length=100, blank=True, verbose_name="Logistikkosten Gerät FW")
+    waehrungskurs             = models.CharField(max_length=50,  blank=True, verbose_name="Währungskurs")
+    ek_netto_chf              = models.CharField(max_length=100, blank=True, verbose_name="EK netto CHF")
+    verpackungskosten         = models.CharField(max_length=100, blank=True, verbose_name="Verpackungskosten")
+    wkz                       = models.CharField(max_length=100, blank=True, verbose_name="WKZ")
+    vk_netto_geraet           = models.CharField(max_length=100, blank=True, verbose_name="VK netto Gerät")
+    menge_reserve             = models.CharField(max_length=50,  blank=True, verbose_name="Menge Reserve")
+    menge_retail              = models.CharField(max_length=50,  blank=True, verbose_name="Menge Retail")
+    menge_broker              = models.CharField(max_length=50,  blank=True, verbose_name="Menge Broker")
+    menge_marketplace         = models.CharField(max_length=50,  blank=True, verbose_name="Menge Marketplace")
+    menge_recycling           = models.CharField(max_length=50,  blank=True, verbose_name="Menge Recycling")
+    securaze_moeglich         = models.CharField(max_length=50,  blank=True, verbose_name="Securaze möglich")
+    datensatz_erhalten        = models.CharField(max_length=50,  blank=True, verbose_name="Datensatz erhalten")
+    datensatz_eingepflegt     = models.CharField(max_length=50,  blank=True, verbose_name="Datensatz eingepflegt")
+    testen                    = models.CharField(max_length=50,  blank=True, verbose_name="Testen")
+    putzen                    = models.CharField(max_length=50,  blank=True, verbose_name="Putzen")
+    loeschen                  = models.CharField(max_length=50,  blank=True, verbose_name="Löschen")
+    verpackung                = models.CharField(max_length=50,  blank=True, verbose_name="Verpackung")
+    braendi                   = models.CharField(max_length=50,  blank=True, verbose_name="Braendi")
+    lieferart                 = models.CharField(max_length=100, blank=True, verbose_name="Lieferart")
+    versanddienstleister      = models.CharField(max_length=100, blank=True, verbose_name="Versanddienstleister")
+
     class Meta:
         unique_together = ('lieferung', 'positionsnummer')
         ordering = ['positionsnummer']
@@ -137,7 +162,9 @@ class Lieferungsposition(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.positionsnummer:
-            last = Lieferungsposition.objects.filter(lieferung=self.lieferung).order_by('-positionsnummer').first()
+            last = Lieferungsposition.objects.filter(
+                lieferung=self.lieferung
+            ).order_by('-positionsnummer').first()
             self.positionsnummer = last.positionsnummer + 1 if last else 1
         super().save(*args, **kwargs)
 

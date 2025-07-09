@@ -3,74 +3,154 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lieferauftrag {{ lieferung.liefernummer }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lieferung {{ lieferung.liefernummer }} – Detail</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
-  <header class="flex items-center justify-between p-4 bg-white shadow">
-    <h1 class="text-2xl">Lieferauftrag {{ lieferung.liefernummer }}</h1>
-    <!-- Hier den Link zurück zur List-View anpassen -->
-    <a href="{% url 'lieferung_list' %}" class="text-blue-600 hover:underline">&larr; Zurück</a>
+
+  <!-- Header -->
+  <header class="flex items-center justify-between bg-white shadow p-4">
+    <h1 class="text-2xl font-semibold">Lieferung {{ lieferung.liefernummer }} – Detail</h1>
+    <a href="{% url 'lieferung_list' %}" class="text-blue-600 hover:underline">← Zurück zum Dashboard</a>
   </header>
 
   <main class="p-4 space-y-6">
-    <dl class="grid grid-cols-2 gap-4 bg-white shadow rounded-lg p-6">
-      <div>
-        <dt class="font-medium">Lieferant</dt>
-        <dd>{{ lieferung.lieferant.name }}</dd>
-      </div>
-      <div>
-        <dt class="font-medium">Bestelldatum</dt>
-        <dd>{{ lieferung.bestelldatum|date:"d.m.Y" }}</dd>
-      </div>
-      <div>
-        <dt class="font-medium">Erwartet</dt>
-        <dd>
-          {% if lieferung.erwartetes_datum %}
-            {{ lieferung.erwartetes_datum|date:"d.m.Y" }}
-          {% else %}
-            –  
-          {% endif %}
-        </dd>
-      </div>
-      <div>
-        <dt class="font-medium">Effektiv</dt>
-        <dd>
-          {% if lieferung.effektives_datum %}
-            {{ lieferung.effektives_datum|date:"d.m.Y" }}
-          {% else %}
-            –  
-          {% endif %}
-        </dd>
-      </div>
-      <div>
-        <dt class="font-medium">Menge</dt>
-        <dd>{{ lieferung.gesamtmenge }}</dd>
-      </div>
-      <div>
-        <dt class="font-medium">Kommentar</dt>
-        <dd>{{ lieferung.kommentar }}</dd>
-      </div>
-    </dl>
 
-    <!-- Positionen-Liste -->
-    <section class="mt-6 bg-white shadow rounded-lg p-4">
-      <h2 class="text-xl mb-2">Positionen</h2>
-      {% if lieferung.positionen.exists %}
-      <ul class="list-disc list-inside space-y-1">
-        {% for p in lieferung.positionen.all %}
-        <li>
-          Pos {{ p.positionsnummer }}: {{ p.geraetetyp }} – {{ p.geraetemodell }}  
-          ({{ p.farbe }} / {{ p.speicher }} / {{ p.ram }} / {{ p.prozessor }} / {{ p.zustand }})  
-          Menge: {{ p.menge }}
-        </li>
-        {% endfor %}
-      </ul>
+    <!-- Stammdaten -->
+    <section class="bg-white shadow rounded-lg p-6">
+      <h2 class="text-xl font-semibold mb-4">Stammdaten</h2>
+      <dl class="grid grid-cols-2 gap-x-8 gap-y-4">
+        <dt class="font-medium">Lieferant</dt><dd>{{ lieferung.lieferant.name }}</dd>
+        <dt class="font-medium">Bestelldatum</dt><dd>{{ lieferung.bestelldatum|date:"d.m.Y" }}</dd>
+        <dt class="font-medium">Erwartetes Datum</dt>
+          <dd>{% if lieferung.erwartetes_datum %}{{ lieferung.erwartetes_datum|date:"d.m.Y" }}{% else %}&ndash;{% endif %}</dd>
+        <dt class="font-medium">Liefertermin</dt>
+          <dd>{% if lieferung.liefertermin %}{{ lieferung.liefertermin|date:"d.m.Y" }}{% else %}&ndash;{% endif %}</dd>
+        <dt class="font-medium">Effektives Datum</dt>
+          <dd>{% if lieferung.effektives_datum %}{{ lieferung.effektives_datum|date:"d.m.Y" }}{% else %}&ndash;{% endif %}</dd>
+        <dt class="font-medium">Menge Total</dt><dd>{{ lieferung.gesamtmenge }}</dd>
+        <dt class="font-medium">Bestätigte Menge</dt>
+          <dd>{% if lieferung.confirmed_menge is not None %}{{ lieferung.confirmed_menge }}{% else %}&ndash;{% endif %}</dd>
+        <dt class="font-medium">Kommentar</dt>
+          <dd class="col-span-1 md:col-span-2 whitespace-pre-wrap">{{ lieferung.kommentar|default:"–" }}</dd>
+      </dl>
+    </section>
+
+    <!-- Positionen -->
+    <section class="bg-white shadow rounded-lg p-6">
+      <h2 class="text-xl font-semibold mb-4">Positionen</h2>
+      {% if lieferung.positionen.all %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="px-3 py-2">Pos-Nr.</th>
+              <th class="px-3 py-2">Typ</th>
+              <th class="px-3 py-2">Modell</th>
+              <th class="px-3 py-2">Farbe</th>
+              <th class="px-3 py-2">Speicher</th>
+              <th class="px-3 py-2">RAM</th>
+              <th class="px-3 py-2">Prozessor</th>
+              <th class="px-3 py-2">Zustand</th>
+              <th class="px-3 py-2">Menge</th>
+              <th class="px-3 py-2">Aufgaben</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pos in lieferung.positionen.all %}
+            <tr class="{% cycle 'bg-white' 'bg-gray-50' %}">
+              <td class="px-3 py-1">{{ pos.positionsnummer }}</td>
+              <td class="px-3 py-1">{{ pos.geraetetyp.name }}</td>
+              <td class="px-3 py-1">{{ pos.geraetemodell.name }}</td>
+              <td class="px-3 py-1">{{ pos.farbe }}</td>
+              <td class="px-3 py-1">{{ pos.speicher }}</td>
+              <td class="px-3 py-1">{{ pos.ram }}</td>
+              <td class="px-3 py-1">{{ pos.prozessor }}</td>
+              <td class="px-3 py-1">{{ pos.zustand }}</td>
+              <td class="px-3 py-1">{{ pos.menge }}</td>
+              <td class="px-3 py-1">
+                <button type="button"
+                        onclick="toggleTasks({{ pos.pk }})"
+                        class="text-blue-600 hover:underline">
+                  Aufgaben ↓
+                </button>
+              </td>
+            </tr>
+            <!-- Task-Liste (ausklappbar) -->
+            <tr id="tasks-{{ pos.pk }}" class="hidden bg-gray-50">
+              <td colspan="10" class="px-3 py-2">
+                <ul class="space-y-2">
+                  <!-- Datensatz erhalten -->
+                  <li class="flex items-center space-x-4">
+                    <img src="{% static 'images/not_done.png' %}"
+                         id="icon-{{ pos.pk }}-datensatz"
+                         class="h-5 w-5 cursor-pointer"
+                         onclick="toggleTask({{ pos.pk }}, 'datensatz')"
+                         alt="Status">
+                    <span class="flex-1">Datensatz erhalten</span>
+                    <span id="ts-{{ pos.pk }}-datensatz" class="text-xs text-gray-500"></span>
+                    <span id="user-{{ pos.pk }}-datensatz" class="ml-2 text-xs text-gray-700"></span>
+                  </li>
+                  <!-- Testen -->
+                  <li class="flex items-center space-x-4">
+                    <img src="{% static 'images/not_done.png' %}"
+                         id="icon-{{ pos.pk }}-testen"
+                         class="h-5 w-5 cursor-pointer"
+                         onclick="toggleTask({{ pos.pk }}, 'testen')"
+                         alt="Status">
+                    <span class="flex-1">Testen</span>
+                    <span id="ts-{{ pos.pk }}-testen" class="text-xs text-gray-500"></span>
+                    <span id="user-{{ pos.pk }}-testen" class="ml-2 text-xs text-gray-700"></span>
+                  </li>
+                  <!-- Putzen -->
+                  <li class="flex items-center space-x-4">
+                    <img src="{% static 'images/not_done.png' %}"
+                         id="icon-{{ pos.pk }}-putzen"
+                         class="h-5 w-5 cursor-pointer"
+                         onclick="toggleTask({{ pos.pk }}, 'putzen')"
+                         alt="Status">
+                    <span class="flex-1">Putzen</span>
+                    <span id="ts-{{ pos.pk }}-putzen" class="text-xs text-gray-500"></span>
+                    <span id="user-{{ pos.pk }}-putzen" class="ml-2 text-xs text-gray-700"></span>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
       {% else %}
-      <p class="italic text-gray-500">Keine Positionen angelegt.</p>
+      <p class="text-gray-600">Keine Positionen importiert.</p>
       {% endif %}
     </section>
+
   </main>
+
+  <script>
+    // Task-Liste ausklappen/einklappen
+    function toggleTasks(pk) {
+      document.getElementById(`tasks-${pk}`).classList.toggle('hidden');
+    }
+
+    // Aufgabe toggeln
+    function toggleTask(posPk, key) {
+      const icon = document.getElementById(`icon-${posPk}-${key}`);
+      const ts   = document.getElementById(`ts-${posPk}-${key}`);
+      const user = document.getElementById(`user-${posPk}-${key}`);
+      const now  = new Date().toLocaleString('de-DE');
+      if (icon.src.includes('not_done.png')) {
+        icon.src = "{% static 'images/done.png' %}";
+        ts.textContent   = now;
+        user.textContent = 'Sandro';
+      } else {
+        icon.src = "{% static 'images/not_done.png' %}";
+        ts.textContent   = '';
+        user.textContent = '';
+      }
+    }
+  </script>
+
 </body>
 </html>

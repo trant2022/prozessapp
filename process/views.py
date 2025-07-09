@@ -198,13 +198,13 @@ def upload_positions(request):
         except (Lieferung.DoesNotExist, ValueError):
             continue
 
-        # Gerätetyp
+        # Gerätetyp bestimmen
         typ_name = row.get('Geräteart') or row.get('Gerätetyp') or row.get('Geraetetyp')
         if not typ_name or pd.isna(typ_name):
             continue
         typ, _ = Gerätetyp.objects.get_or_create(name=str(typ_name).strip())
 
-        # Gerätemodell
+        # Modell bestimmen
         modell_name = row.get('Gerätemodell') or row.get('Modell')
         if not modell_name or pd.isna(modell_name):
             continue
@@ -213,21 +213,54 @@ def upload_positions(request):
             name=str(modell_name).strip()
         )
 
+        # Basis-Felder
         menge = row.get('Menge')
         menge = int(menge) if not pd.isna(menge) else 0
 
+        # Zusätzliche Felder
+        def _txt(col):
+            val = row.get(col)
+            return str(val).strip() if not pd.isna(val) else ''
+
         Lieferungsposition.objects.create(
-            lieferung      = lieferung,
-            geraetetyp     = typ,
-            geraetemodell  = modell,
-            farbe          = str(row.get('Farbe') or '').strip(),
-            speicher       = str(row.get('Speicher') or '').strip(),
-            ram            = str(row.get('RAM') or '').strip(),
-            prozessor      = str(row.get('Prozessor') or '').strip(),
-            zustand        = str(row.get('Zustand') or '').strip(),
-            menge          = menge
+            lieferung                     = lieferung,
+            geraetetyp                    = typ,
+            geraetemodell                 = modell,
+            farbe                         = _txt('Farbe'),
+            speicher                      = _txt('Speicher'),
+            ram                           = _txt('RAM'),
+            prozessor                     = _txt('Prozessor'),
+            zustand                       = _txt('Zustand'),
+            menge                         = menge,
+            auftragsart                   = _txt('Auftragsart'),
+            kundenart                     = _txt('Kundenart'),
+            kunde                         = _txt('Kunde'),
+            ek_netto_fw                   = _txt('EK netto FW'),
+            waehrung                      = _txt('Währung'),
+            logistikkosten_geraet_fw      = _txt('Logistikkosten Gerät FW'),
+            waehrungskurs                 = _txt('Währungskurs'),
+            ek_netto_chf                  = _txt('EK netto CHF'),
+            verpackungskosten             = _txt('Verpackungskosten'),
+            wkz                           = _txt('WKZ'),
+            vk_netto_geraet               = _txt('VK netto Gerät'),
+            menge_reserve                 = _txt('Menge Reserve'),
+            menge_retail                  = _txt('Menge Retail'),
+            menge_broker                  = _txt('Menge Broker'),
+            menge_marketplace             = _txt('Menge Marketplace'),
+            menge_recycling               = _txt('Menge Recycling'),
+            securaze_moeglich             = _txt('Securaze möglich'),
+            datensatz_erhalten            = _txt('Datensatz erhalten'),
+            datensatz_eingepflegt         = _txt('Datensatz eingepflegt'),
+            testen                        = _txt('Testen'),
+            putzen                        = _txt('Putzen'),
+            loeschen                      = _txt('Löschen'),
+            verpackung                    = _txt('Verpackung'),
+            braendi                       = _txt('Braendi'),
+            lieferart                     = _txt('Lieferart'),
+            versanddienstleister          = _txt('Versanddienstleister'),
         )
 
+    # Wenn mindestens eine Position importiert wurde, zurück zur Detail-Seite
     if lieferung:
         return redirect('lieferung_detail', pk=lieferung.liefernummer)
     return redirect('lieferung_list')
