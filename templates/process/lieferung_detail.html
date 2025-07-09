@@ -10,7 +10,7 @@
 <body class="bg-gray-100 text-gray-800">
   <header class="flex items-center justify-between p-4 bg-white shadow">
     <h1 class="text-2xl">Lieferung {{ lieferung.liefernummer }}</h1>
-    <a href="{% url 'order_list' %}" class="text-blue-600 hover:underline">&larr; Zurück</a>
+    <a href="{% url 'lieferung_list' %}" class="text-blue-600 hover:underline">&larr; Zurück</a>
   </header>
 
   <main class="p-4 space-y-6">
@@ -24,7 +24,7 @@
         <dd>{{ lieferung.bestelldatum|date:"d.m.Y" }}</dd>
       </div>
       <div>
-        <dt class="font-medium">Erwartet</dt>
+        <dt class="font-medium">Erwartetes Datum</dt>
         <dd>
           {% if lieferung.erwartetes_datum %}
             {{ lieferung.erwartetes_datum|date:"d.m.Y" }}
@@ -34,7 +34,7 @@
         </dd>
       </div>
       <div>
-        <dt class="font-medium">Effektiv</dt>
+        <dt class="font-medium">Effektives Datum</dt>
         <dd>
           {% if lieferung.effektives_datum %}
             {{ lieferung.effektives_datum|date:"d.m.Y" }}
@@ -49,24 +49,23 @@
       </div>
       <div>
         <dt class="font-medium">Kommentar</dt>
-        <dd>{{ lieferung.kommentar|default:"—" }}</dd>
+        <dd>{{ lieferung.kommentar }}</dd>
       </div>
     </dl>
 
     <section class="mt-6 bg-white shadow rounded-lg p-4">
       <h2 class="text-xl mb-2">Positionen</h2>
-      {% if positionen %}
       <ul class="list-disc list-inside space-y-1">
         {% for p in positionen %}
-        <li>
-          {{ p.positionsnummer }}: {{ p.geraetetyp.name }} {{ p.geraetemodell.name }}
-          ({{ p.menge }}×, Zustand: {{ p.zustand }})
-        </li>
+          <li>
+            {{ p.positionsnummer }}:
+            {{ p.geraetetyp.name }} {{ p.geraetemodell.name }}
+            – {{ p.menge }}×
+          </li>
+        {% empty %}
+          <li>Keine Positionen vorhanden.</li>
         {% endfor %}
       </ul>
-      {% else %}
-      <p class="text-gray-500">Keine Positionen vorhanden.</p>
-      {% endif %}
     </section>
   </main>
 </body>
